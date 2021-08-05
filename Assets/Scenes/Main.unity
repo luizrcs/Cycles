@@ -17,7 +17,7 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: 0.65080994, g: 0.666729, b: 0.7075472, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.05
+  m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
   m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
@@ -293,7 +293,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 253496964}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.4, z: 0}
+  m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 1620458872}
@@ -712,19 +712,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4c025d6e1d3a5543b678005be63420c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Ceiling: {fileID: 5781162810374824006, guid: 24934f0e106998744adb87e3b41f634e, type: 3}
-  Ceiling_Thin: {fileID: 5781162810374824006, guid: 30fe2a7cc8830ce4aabc70610a6af4a6, type: 3}
+  Ceiling_A: {fileID: 4999575040255640389, guid: 24934f0e106998744adb87e3b41f634e, type: 3}
+  Ceiling_B: {fileID: 4999575040255640389, guid: c5b7ad1a0a772e34c84477f120b3b956, type: 3}
+  Ceiling_Thin: {fileID: 4999575040255640389, guid: d840647ede5a0e041924852087f69eee, type: 3}
   Floor_A: {fileID: 5781162810374824006, guid: 0887293e56dd8f94f93a255bfbeab81b, type: 3}
   Floor_A_Thin: {fileID: 5781162810374824006, guid: faf5b1f45e74e6544a9f4403ef10572a, type: 3}
   Floor_B: {fileID: 5781162810374824006, guid: a3568f839be848741b670365885622c8, type: 3}
   Floor_C: {fileID: 5781162810374824006, guid: a5a2d5779bc5016498041efa1cfd3d6d, type: 3}
   Floor_D: {fileID: 5781162810374824006, guid: 3d7e451808478f949ae460462f4e8897, type: 3}
   Floor_E: {fileID: 5781162810374824006, guid: c4e512c6078ddc04f8ade4e1bca06668, type: 3}
-  DoorWall: {fileID: 5525873484119793926, guid: 8af86211f10eb6d4fb68e19350d38fec, type: 3}
-  Wall: {fileID: 5525873484119793926, guid: 4f7a2c325c934c34f8343e116368bfe3, type: 3}
-  Wall_Thin: {fileID: 5525873484119793926, guid: 7dd1aba5f094efa44a7ed5fa4f5f3a6d, type: 3}
-  evenWallFactor: 0.25
-  oddWallFactor: 1
+  Wall_A: {fileID: 3357776447895713264, guid: f44b2f7d44103db44a4031ca41257599, type: 3}
+  Wall_B: {fileID: 3357776447895713264, guid: 2cfb9e96fa6852848b3b3bf95d7e44b7, type: 3}
+  Wall_Door: {fileID: 3357776447895713264, guid: ba05e9bcf5c542a4088266761e693dc7, type: 3}
+  Wall_Thin: {fileID: 3357776447895713264, guid: ea02e45207fc5414d937ab371d3bdf9b, type: 3}
+  WallWidth: 6
+  WallHeight: 8
+  EvenWallFactor: 0.25
+  OddWallFactor: 1
 --- !u!1 &1145444333
 GameObject:
   m_ObjectHideFlags: 0
@@ -1133,7 +1137,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1632279902
 Transform:
   m_ObjectHideFlags: 0

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5116327181678938586}
   m_Layer: 0
-  m_Name: Ceiling_Thin
+  m_Name: Ceiling_B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -44,7 +44,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 97de0a28ac2a89d439615535f7838b3f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 2.5
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 97de0a28ac2a89d439615535f7838b3f, type: 3}
       propertyPath: m_LocalScale.y
