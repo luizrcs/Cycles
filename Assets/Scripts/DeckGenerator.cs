@@ -143,9 +143,9 @@ public class DeckGenerator
                         doorY = y;
                     }
 
-                    int doorSide = random.Next(4);
                     int doorCorner = random.Next(2);
-                    int doorRotation = 4 + doorSide * doorCorner;
+                    int doorSide = random.Next(4);
+                    int doorRotation = 4 + doorCorner * 4 + doorSide;
 
                     switch (doorSide)
                     {
@@ -158,11 +158,11 @@ public class DeckGenerator
                             else setDoor(startX + roomSize - 1, startY - 1);
                             break;
                         case 2:
-                            if (doorCorner == 0) setDoor(startX - 1, startY);
+                            if (doorCorner != 0) setDoor(startX - 1, startY);
                             else setDoor(startX - 1, startY + roomSize - 1);
                             break;
                         case 3:
-                            if (doorCorner == 0) setDoor(startX, startY + roomSize);
+                            if (doorCorner != 0) setDoor(startX, startY + roomSize);
                             else setDoor(startX + roomSize - 1, startY + roomSize);
                             break;
                     }
@@ -179,9 +179,10 @@ public class DeckGenerator
                         Matrix[doorX, doorY] = doorRotation;
 
                         // fill room
-                        for (int x = 0; x < roomSize; x++)
+                        /* for (int x = 0; x < roomSize; x++)
                             for (int y = 0; y < roomSize; y++)
-                                Matrix[startX + x, startY + y] = 2;
+                                Matrix[startX + x, startY + y] = 2; */
+                        Matrix[startX, startY] = 8 + doorRotation;
                     }
                 }
             }

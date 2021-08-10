@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public CharacterController playerController;
+    public CharacterController PlayerController;
+    public Animator Animator;
 
     public int Speed;
 
@@ -12,7 +13,10 @@ public class PlayerMovement : MonoBehaviour
     {
         float movementX = Input.GetAxis("Horizontal");
         float movementZ = Input.GetAxis("Vertical");
-        Vector3 movement = (transform.right * movementX + transform.forward * movementZ) * Speed * Time.deltaTime;
-        playerController.Move(movement);
+        Vector3 movement = Vector3.ClampMagnitude((transform.right * movementX + transform.forward * movementZ), 1f);
+        Vector3 motion = movement * Speed;
+        PlayerController.Move(motion * Time.deltaTime);
+
+        Animator.SetBool("isRunning", movement.magnitude != 0);
     }
 }
