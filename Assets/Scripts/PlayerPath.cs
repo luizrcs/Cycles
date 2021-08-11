@@ -6,6 +6,7 @@ public class PlayerPath : MonoBehaviour
 {
     public Queue<ulong> Queue = new Queue<ulong>();
 
+    private float timeResolution = 200f;
     private float lastTime = 0f;
 
     void Update()
@@ -20,7 +21,7 @@ public class PlayerPath : MonoBehaviour
 
     private ulong CurrentPosition()
     {
-        ulong encodedValue = (ulong)(Time.time / 0.01f);
+        ulong encodedValue = (ulong)(Time.time * timeResolution);
 
         Vector3 position = transform.position;
         ulong x = (ulong)(position.x * 10);
@@ -31,6 +32,11 @@ public class PlayerPath : MonoBehaviour
 
         encodedValue <<= 16;
         encodedValue |= z;
+
+        Quaternion rotation = transform.rotation;
+        ulong y = (ulong)((rotation.y + 1f) * 128f);
+        encodedValue <<= 8;
+        encodedValue |= y;
 
         return encodedValue;
     }

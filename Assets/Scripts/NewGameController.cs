@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class NewGameController : MonoBehaviour
 {
+    public Button SkipButton;
+
     public Animator CameraAnimator;
     public Animator LanternAnimator;
 
@@ -21,10 +23,16 @@ public class NewGameController : MonoBehaviour
     public Text[] Texts;
 
     private TextMeshProUGUI textMeshPro;
+    private TextMeshProUGUI skipTextMeshPro;
 
     void Start()
     {
         textMeshPro = GetComponent<TextMeshProUGUI>();
+        skipTextMeshPro = SkipButton.GetComponent<TextMeshProUGUI>();
+
+        Color color = skipTextMeshPro.color;
+        color.a = 0f;
+        skipTextMeshPro.color = color;
     }
 
     public void PlayStoryboard()
@@ -33,6 +41,7 @@ public class NewGameController : MonoBehaviour
         StartCoroutine(FadeOutButton());
 
         StartCoroutine(FadeOutTexts());
+        StartCoroutine(FadeInSkipButton());
 
         CameraAnimator.Play("StoryboardCamera");
         LanternAnimator.Play("StoryboardLantern");
@@ -47,11 +56,27 @@ public class NewGameController : MonoBehaviour
         StartCoroutine(StartGameScene());
     }
 
+    IEnumerator FadeInSkipButton()
+    {
+        yield return new WaitForSeconds(4f);
+
+        SkipButton.interactable = true;
+
+        for (float f = 0f; f < 1f; f += 0.05f)
+        {
+            Color color = skipTextMeshPro.color;
+            color.a = f;
+            skipTextMeshPro.color = color;
+
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
     IEnumerator FadeOutButton()
     {
         yield return new WaitForSeconds(2f);
 
-        for (float f = 1f; f > 0; f -= 0.05f)
+        for (float f = 1f; f > 0f; f -= 0.05f)
         {
             Color color = textMeshPro.color;
             color.a = f;

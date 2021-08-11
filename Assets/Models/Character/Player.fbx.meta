@@ -6,7 +6,12 @@ ModelImporter:
   - first:
       74: 1827226128182048838
     second: Walking
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: rp_nathan_animated_003_mat
+    second: {fileID: 2100000, guid: 0ecb86ae2af1a8344bd15755af18be8c, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
