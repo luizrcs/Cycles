@@ -8,16 +8,18 @@ public class AntiPlayerFollow : MonoBehaviour
 
     public Animator antiPlayerAnimator;
 
+    private Rigidbody rigidbody;
+
     private PlayerPath playerPath;
-    private Vector3 currentTargetPosition;
-    private float currentTargetRotation;
+    private Vector3 lastTargetPosition;
 
     private float waitTime = 5f;
-    private float timeResolution = 200f;
+    private float timeResolution = 100f;
 
     void Start()
     {
         playerPath = Player.GetComponent<PlayerPath>();
+        rigidbody = GetComponent<Rigidbody>();
     }
 
     void Update()
@@ -25,17 +27,19 @@ public class AntiPlayerFollow : MonoBehaviour
         float currentTime = Time.time;
         if (playerPath.Queue.Count > 0 && currentTime > waitTime + PeekTime())
         {
-            Vector3 newTargetPosition = CurrentPosition();
-            antiPlayerAnimator.SetBool("isRunning", newTargetPosition != currentTargetPosition);
-            currentTargetPosition = newTargetPosition;
+            Vector3 targetPosition = TargetPosition();
+            if (targetPosition != lastTargetPosition)
+            {
+                lastTargetPosition = targetPosition;
+                antiPlayerAnimator.SetBool("isRunning", true);
+                rigidbody.MovePosition(targetPosition);
+            }
+            else antiPlayerAnimator.SetBool("isRunning", false);
 
-            currentTargetRotation = CurrentRotation();
+            Vector3 targetRotation = transform.rotation.eulerAngles;
+            targetRotation.y = TargetRotationY();
+            rigidbody.MoveRotation(Quaternion.Euler(targetRotation));
         }
-
-        transform.position = currentTargetPosition;
-
-        Quaternion rotation = transform.rotation;
-        transform.rotation = new Quaternion(rotation.x, currentTargetRotation, rotation.z, rotation.w);
     }
 
     private float PeekTime()
@@ -44,7 +48,7 @@ public class AntiPlayerFollow : MonoBehaviour
         return (encodedValue >> 40) / timeResolution;
     }
 
-    private Vector3 CurrentPosition()
+    private Vector3 TargetPosition()
     {
         ulong encodedValue = playerPath.Queue.Peek();
 
@@ -54,9 +58,9 @@ public class AntiPlayerFollow : MonoBehaviour
         return new Vector3(x, Player.transform.position.y, z);
     }
 
-    private float CurrentRotation()
+    private float TargetRotationY()
     {
         ulong encodedValue = playerPath.Queue.Dequeue();
-        return ((encodedValue & 0xFF) / 128f) - 1f;
+        return (encodedValue & 0xFF) / 256f * 360f;
     }
 }

@@ -256,6 +256,18 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
+--- !u!114 &9160491901640928290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6990542773596614865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50faad0a5423772418845b26ca9f24d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!64 &6483996436013560053
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -792,9 +804,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7028008738022027966, guid: 827b197b7aeac3544ad78189a1a17fe6, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 827b197b7aeac3544ad78189a1a17fe6, type: 3}
       propertyPath: m_Name
       value: TULIPS 2703
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 827b197b7aeac3544ad78189a1a17fe6, type: 3}
+--- !u!1 &6990542773596614865 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 827b197b7aeac3544ad78189a1a17fe6, type: 3}
+  m_PrefabInstance: {fileID: 7908897418646343040}
+  m_PrefabAsset: {fileID: 0}
