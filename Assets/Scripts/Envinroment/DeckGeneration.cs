@@ -18,8 +18,9 @@ public class DeckGeneration : MonoBehaviour
 
     public GameObject Wall_A;
     public GameObject Wall_B;
-    public GameObject Wall_Door;
     public GameObject Wall_Thin;
+    public GameObject Wall_Door_A;
+    public GameObject Wall_Door_B;
 
     public GameObject Room_A;
     public GameObject Room_B;
@@ -32,10 +33,14 @@ public class DeckGeneration : MonoBehaviour
 
     private DeckGenerator deckGenerator;
 
+    private int oars, nails, compass;
+
     void Start()
     {
         deckGenerator = new DeckGenerator();
         while (deckGenerator.GeneratedRooms < 3) deckGenerator.GenerateDeck();
+
+        DecideItemsRooms();
 
         float deckX = 0;
         float deckZ = 0;
@@ -57,6 +62,26 @@ public class DeckGeneration : MonoBehaviour
         }
     }
 
+    private int RandomIntExceptOne(int max, int exception)
+    {
+        int value = deckGenerator.Random.Next(max - 1);
+        return value < exception ? value : value + 1;
+    }
+
+    private int RandomIntExceptTwo(int max, int exception1, int exception2)
+    {
+        int value = deckGenerator.Random.Next(max - 2);
+        return value < Mathf.Min(exception1, exception2) ? value : (value < Mathf.Max(exception1, exception2) - 1 ? value + 1 : value + 2);
+    }
+
+    private void DecideItemsRooms()
+    {
+        int generatedRooms = deckGenerator.GeneratedRooms;
+        oars = deckGenerator.Random.Next(generatedRooms);
+        nails = RandomIntExceptOne(generatedRooms, oars);
+        compass = RandomIntExceptTwo(generatedRooms, oars, nails);
+    }
+
     private void InstantiateCeiling(int x, int y, float deckX, float deckZ)
     {
         int cell = deckGenerator.Matrix[x, y];
@@ -66,7 +91,7 @@ public class DeckGeneration : MonoBehaviour
             else if (y % 2 == 0) Instantiate(Ceiling_Thin, new Vector3(deckX, WallHeight, deckZ), Quaternion.Euler(0, 90, 0), transform);
             else
             {
-                GameObject ceiling = ((x - 1) / 2 % 2 == 0 ^ (y - 1) / 2 % 2 == 0) ? Ceiling_B : Ceiling_A;
+                GameObject ceiling = ((x - 1) % 4 == 0 ^ (y - 1) % 4 == 0) ? Ceiling_B : Ceiling_A;
                 Instantiate(ceiling, new Vector3(deckX, WallHeight, deckZ), Quaternion.Euler(0, 0, 0), transform);
             }
         }
@@ -145,19 +170,39 @@ public class DeckGeneration : MonoBehaviour
                 int south = deckGenerator.Matrix[x, y - 1];
                 int west = deckGenerator.Matrix[x - 1, y];
 
-                GameObject wall = ((x - 1) / 2 % 2 == 0 ^ (y - 1) / 2 % 2 == 0) ? Wall_A : Wall_B;
+                GameObject wall = ((x - 1) % 4 == 0 ^ (y - 1) % 4 == 0) ? Wall_A : Wall_B;
 
                 if (north == 0) Instantiate(wall, new Vector3(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
-                else if (north >= 4 && north < 12) Instantiate(Wall_Door, new Vector3(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
+                else if (north >= 4 && north < 12)
+                {
+                    int corner = north / 4;
+                    GameObject wallDoor = corner == 1 ? Wall_Door_A : Wall_Door_B;
+                    Instantiate(wallDoor, new Vector3(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
+                }
 
                 if (east == 0) Instantiate(wall, new Vector3(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
-                else if (east >= 4 && east < 12) Instantiate(Wall_Door, new Vector3(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
+                else if (east >= 4 && east < 12)
+                {
+                    int corner = east / 4;
+                    GameObject wallDoor = corner == 1 ? Wall_Door_A : Wall_Door_B;
+                    Instantiate(wallDoor, new Vector3(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
+                }
 
                 if (south == 0) Instantiate(wall, new Vector3(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
-                else if (south >= 4 && south < 12) Instantiate(Wall_Door, new Vector3(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
+                else if (south >= 4 && south < 12)
+                {
+                    int corner = south / 4;
+                    GameObject wallDoor = corner == 1 ? Wall_Door_A : Wall_Door_B;
+                    Instantiate(wallDoor, new Vector3(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
+                }
 
                 if (west == 0) Instantiate(wall, new Vector3(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
-                else if (west >= 4 && west < 12) Instantiate(Wall_Door, new Vector3(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, -90, 0), transform);
+                else if (west >= 4 && west < 12)
+                {
+                    int corner = west / 4;
+                    GameObject wallDoor = corner == 1 ? Wall_Door_A : Wall_Door_B;
+                    Instantiate(wallDoor, new Vector3(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
+                }
             }
         }
     }

@@ -24,6 +24,8 @@ public class DeckGenerator
         }
     }
 
+    public System.Random Random = new System.Random();
+
     private int corridorsX;
     private int corridorsY;
     private int innerCorridorsX;
@@ -38,8 +40,6 @@ public class DeckGenerator
     private int corridorWidth;
     private int corridorHeight;
     private int longestPath;
-
-    private readonly System.Random random = new System.Random();
 
     public DeckGenerator()
     {
@@ -83,7 +83,7 @@ public class DeckGenerator
             int x = 1 + corridorX * roomDistance;
             for (int y = 1; y < Height - 1; y++)
             {
-                if (IsBorderCorridorCell(x, y) || y % 2 != 0 || random.NextDouble() >= corridorClosureProbability)
+                if (IsBorderCorridorCell(x, y) || y % 2 != 0 || Random.NextDouble() >= corridorClosureProbability)
                     Matrix[x, y] = 1;
             }
         }
@@ -94,7 +94,7 @@ public class DeckGenerator
             int y = 1 + corridorY * roomDistance;
             for (int x = 1; x < Width - 1; x++)
             {
-                if (IsBorderCorridorCell(x, y) || x % 2 != 0 || random.NextDouble() >= corridorClosureProbability)
+                if (IsBorderCorridorCell(x, y) || x % 2 != 0 || Random.NextDouble() >= corridorClosureProbability)
                     Matrix[x, y] = 1;
             }
         }
@@ -131,7 +131,7 @@ public class DeckGenerator
             {
                 int startY = 3 + roomY * roomDistance;
 
-                if (random.Next(4) != 0)
+                if (Random.Next(4) != 0)
                 {
                     // decide door coordinates
                     int doorX = -1;
@@ -143,8 +143,8 @@ public class DeckGenerator
                         doorY = y;
                     }
 
-                    int doorCorner = random.Next(2);
-                    int doorSide = random.Next(4);
+                    int doorCorner = Random.Next(2);
+                    int doorSide = Random.Next(4);
                     int doorRotation = 4 + doorCorner * 4 + doorSide;
 
                     switch (doorSide)

@@ -1254,10 +1254,11 @@ MonoBehaviour:
   Floor_E: {fileID: 5781162810374824006, guid: c4e512c6078ddc04f8ade4e1bca06668, type: 3}
   Wall_A: {fileID: 3357776447895713264, guid: f44b2f7d44103db44a4031ca41257599, type: 3}
   Wall_B: {fileID: 3357776447895713264, guid: 2cfb9e96fa6852848b3b3bf95d7e44b7, type: 3}
-  Wall_Door: {fileID: 3357776447895713264, guid: ba05e9bcf5c542a4088266761e693dc7, type: 3}
   Wall_Thin: {fileID: 3357776447895713264, guid: ea02e45207fc5414d937ab371d3bdf9b, type: 3}
+  Wall_Door_A: {fileID: 3357776447895713264, guid: ba05e9bcf5c542a4088266761e693dc7, type: 3}
+  Wall_Door_B: {fileID: 3357776447895713264, guid: 7551df692a7d7e84ab9c15a3a92525eb, type: 3}
   Room_A: {fileID: 7879757509408736931, guid: 0466f745aac4d324baf8430ef8bfd867, type: 3}
-  Room_B: {fileID: 7879757509408736931, guid: 0466f745aac4d324baf8430ef8bfd867, type: 3}
+  Room_B: {fileID: 7879757509408736931, guid: f79ab938d8441f0458e3400d7c28ca2e, type: 3}
   WallWidth: 6
   WallHeight: 8
   EvenWallFactor: 0.25
