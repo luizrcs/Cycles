@@ -7,18 +7,27 @@ public class PlayerMovement : MonoBehaviour
     public CharacterController PlayerController;
     public Animator Animator;
 
+    public StepSounds StepSounds;
+
+    public bool LockMovement = false;
     public int Speed;
 
     void Update()
     {
-        float movementX = Input.GetAxis("Horizontal");
-        float movementZ = Input.GetAxis("Vertical");
+        if (!LockMovement)
+        {
+            float movementX = Input.GetAxis("Horizontal");
+            float movementZ = Input.GetAxis("Vertical");
 
-        Vector3 movement = Vector3.ClampMagnitude((transform.right * movementX + transform.forward * movementZ), 1f);
+            Vector3 movement = Vector3.ClampMagnitude((transform.right * movementX + transform.forward * movementZ), 1f);
 
-        Vector3 motion = movement * Speed;
-        PlayerController.Move(motion * Time.deltaTime);
+            Vector3 motion = movement * Speed;
+            PlayerController.Move(motion * Time.deltaTime);
 
-        Animator.SetBool("isRunning", movement.magnitude != 0);
+            bool hasMovement = movement.magnitude != 0;
+            Animator.SetBool("isRunning", hasMovement);
+            if (hasMovement) StepSounds.PlayStepSound();
+        }
+        else Animator.SetBool("isRunning", false);
     }
 }

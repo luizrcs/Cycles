@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PlayerPath : MonoBehaviour
 {
+    public bool Active = true;
+
     public Queue<ulong> Queue = new Queue<ulong>();
 
     private float timeResolution = 100f;
@@ -11,11 +13,14 @@ public class PlayerPath : MonoBehaviour
 
     void Update()
     {
-        float currentTime = Time.time;
-        if (currentTime - lastTime > 0.01)
+        if (Active)
         {
-            lastTime = currentTime;
-            Queue.Enqueue(CurrentPosition());
+            float currentTime = Time.time;
+            if (currentTime - lastTime > 0.01)
+            {
+                lastTime = currentTime;
+                Queue.Enqueue(CurrentPosition());
+            }
         }
     }
 

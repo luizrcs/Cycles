@@ -35,6 +35,8 @@ public class DeckGeneration : MonoBehaviour
 
     private int oars, nails, compass;
 
+    public float minX = -1f, minZ = -1f, maxX = float.MinValue, maxZ = float.MinValue;
+
     void Start()
     {
         deckGenerator = new DeckGenerator();
@@ -102,6 +104,11 @@ public class DeckGeneration : MonoBehaviour
         int cell = deckGenerator.Matrix[x, y];
         if (cell == 1)
         {
+            if (minX == -1f) minX = deckX;
+            if (minZ == -1f) minZ = deckZ;
+            if (deckX > maxX) maxX = deckX;
+            if (deckZ > maxZ) maxZ = deckZ;
+
             int north = Mathf.Min(deckGenerator.Matrix[x, y + 1], 1);
             int east = Mathf.Min(deckGenerator.Matrix[x + 1, y], 1);
             int south = Mathf.Min(deckGenerator.Matrix[x, y - 1], 1);

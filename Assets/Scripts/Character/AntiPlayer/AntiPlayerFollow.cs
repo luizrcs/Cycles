@@ -1,15 +1,19 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class AntiPlayerFollow : MonoBehaviour
 {
-    public GameObject Player;
+    public bool Active = true;
 
-    public Animator antiPlayerAnimator;
+    public DeckGeneration DeckGeneration;
 
+    public Animator AntiPlayerAnimator;
+    public StepSounds StepSounds;
     private Rigidbody rigidbody;
 
+    public GameObject Player;
     private PlayerPath playerPath;
     private Vector3 lastTargetPosition;
 
@@ -24,22 +28,61 @@ public class AntiPlayerFollow : MonoBehaviour
 
     void Update()
     {
-        float currentTime = Time.time;
-        if (playerPath.Queue.Count > 0 && currentTime > waitTime + PeekTime())
+        if (Active)
         {
-            Vector3 targetPosition = TargetPosition();
-            if (targetPosition != lastTargetPosition)
+            float currentTime = Time.time;
+            if (playerPath.Queue.Count > 0 && currentTime > waitTime + PeekTime())
             {
-                lastTargetPosition = targetPosition;
-                antiPlayerAnimator.SetBool("isRunning", true);
-                rigidbody.MovePosition(targetPosition);
-            }
-            else antiPlayerAnimator.SetBool("isRunning", false);
+                Vector3 targetPosition = TargetPosition();
+                if (targetPosition != lastTargetPosition)
+                {
+                    lastTargetPosition = targetPosition;
+                    rigidbody.MovePosition(targetPosition);
 
-            Vector3 targetRotation = transform.rotation.eulerAngles;
-            targetRotation.y = TargetRotationY();
-            rigidbody.MoveRotation(Quaternion.Euler(targetRotation));
+                    AntiPlayerAnimator.SetBool("isRunning", true);
+                    StepSounds.PlayStepSound();
+                }
+                else AntiPlayerAnimator.SetBool("isRunning", false);
+
+                Vector3 targetRotation = transform.rotation.eulerAngles;
+                targetRotation.y = TargetRotationY();
+                rigidbody.MoveRotation(Quaternion.Euler(targetRotation));
+            }
         }
+    }
+
+    public void Respawn()
+    {
+        float minX = DeckGeneration.minX;
+        float minZ = DeckGeneration.minZ;
+        float maxX = DeckGeneration.maxX;
+        float maxZ = DeckGeneration.maxZ;
+
+        Vector3 playerPosition = Player.transform.position;
+        Vector3 a = new(minX, transform.position.y, minZ);
+        Vector3 b = new(minX, transform.position.y, maxZ);
+        Vector3 c = new(maxX, transform.position.y, minZ);
+        Vector3 d = new(maxX, transform.position.y, maxZ);
+
+        float tempDistance;
+        float distance = Vector3.Distance(playerPosition, a);
+        Vector3 chosen = a;
+
+        if ((tempDistance = Vector3.Distance(playerPosition, b)) > distance)
+        {
+            distance = tempDistance;
+            chosen = b;
+        }
+
+        if ((tempDistance = Vector3.Distance(playerPosition, c)) > distance)
+        {
+            distance = tempDistance;
+            chosen = c;
+        }
+
+        if (Vector3.Distance(playerPosition, d) > distance) chosen = d;
+
+        transform.position = chosen;
     }
 
     private float PeekTime()
@@ -55,7 +98,7 @@ public class AntiPlayerFollow : MonoBehaviour
         float z = ((encodedValue >>= 8) & 0xFFFF) / 10f;
         float x = ((encodedValue >>= 16) & 0xFFFF) / 10f;
 
-        return new Vector3(x, Player.transform.position.y, z);
+        return new(x, transform.position.y, z);
     }
 
     private float TargetRotationY()

@@ -2,16 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RandomSoundsController : MonoBehaviour
+public class StepSounds : MonoBehaviour
 {
-    public bool Active = true;
-
-    public AudioClip[] sounds;
+    public AudioClip[] Sounds;
 
     private AudioSource audioSource;
 
     private float lastTime = 0f;
-    private float delay = 5f;
+    private float delay = 0.25f;
 
     private System.Random random = new System.Random();
 
@@ -20,17 +18,16 @@ public class RandomSoundsController : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
     }
 
-    void Update()
+    public void PlayStepSound()
     {
-        if (Active)
+        if (!audioSource.isPlaying)
         {
             float time = Time.time;
             if (time - lastTime > delay)
             {
                 lastTime = time;
-
-                int index = random.Next(sounds.Length);
-                audioSource.clip = sounds[index];
+                int index = random.Next(Sounds.Length);
+                audioSource.clip = Sounds[index];
                 audioSource.Play();
             }
         }
