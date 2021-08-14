@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Collectible
   - AntiPlayerDetector
+  - Globe
   layers:
   - Default
   - TransparentFX

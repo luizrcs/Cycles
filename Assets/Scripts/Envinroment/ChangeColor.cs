@@ -6,7 +6,7 @@ public class ChangeColor : MonoBehaviour
 {
     public string Type;
 
-    private readonly System.Random random = new System.Random();
+    private readonly System.Random random = new();
 
     void Start()
     {

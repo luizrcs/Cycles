@@ -82,6 +82,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Self: {fileID: 1000463290130794847}
   Id: 0
+  Sound: {fileID: 0}
 --- !u!95 &6855862840066878402
 Animator:
   serializedVersion: 4

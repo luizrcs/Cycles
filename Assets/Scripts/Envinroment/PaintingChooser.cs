@@ -6,7 +6,7 @@ public class PaintingChooser : MonoBehaviour
 {
     public Texture2D[] Textures;
 
-    private readonly System.Random random = new System.Random();
+    private readonly System.Random random = new();
 
     void Start()
     {

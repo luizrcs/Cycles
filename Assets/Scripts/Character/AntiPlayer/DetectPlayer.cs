@@ -39,14 +39,10 @@ public class DetectPlayer : MonoBehaviour
                     if (hitTransform.CompareTag("AntiPlayerDetector"))
                     {
                         State = 1;
-
                         DeactivateFollower();
-
                         AntiPlayerAnimator.SetBool("isRunning", true);
-                        MoveTowardsPlayer();
 
                         FirstPersonController.LockCamera = true;
-                        FirstPersonController.LookAtAntiPlayer();
                         playerMovement.LockMovement = true;
 
                         GameLogic.PlayPreBattleEffects();
@@ -64,6 +60,7 @@ public class DetectPlayer : MonoBehaviour
                 {
                     State = 2;
                     AntiPlayerAnimator.SetBool("isRunning", false);
+
                     GameLogic.PlayBattleEffects();
                 }
                 break;
@@ -75,16 +72,15 @@ public class DetectPlayer : MonoBehaviour
 
     private void DeactivateFollower()
     {
-        AntiPlayerFollow.Active = false;
+        AntiPlayerFollow.State = 0;
         PlayerPath.Active = false;
     }
 
     private void MoveTowardsPlayer()
     {
-        float step = 15f * Time.deltaTime;
-
         Vector3 position = transform.position;
         Vector3 playerPosition = Player.transform.position;
+        float step = 15f * Time.deltaTime;
 
         rigidbody.MovePosition(Vector3.MoveTowards(position, playerPosition, step));
         transform.LookAt(playerPosition);

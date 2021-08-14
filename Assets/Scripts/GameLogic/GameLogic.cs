@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -17,41 +18,48 @@ public class GameLogic : MonoBehaviour
     public PlayerMovement PlayerMovement;
 
     public AntiPlayerFollow AntiPlayerFollow;
+    public Animator AntiPlayerAnimator;
     public DetectPlayer DetectPlayer;
+
+    public TextMeshProUGUI MessageTextMeshPro;
+    public TextMeshProUGUI SubMessageTextMeshPro;
 
     private int battleState = 0;
 
-    public void PlayPreBattleEffects()
+    private void Start()
     {
-        StartCoroutine(_PlayPreBattleEffects());
+        Color color = MessageTextMeshPro.color;
+        color.a = 0f;
+        MessageTextMeshPro.color = color;
+        SubMessageTextMeshPro.color = color;
     }
 
-    IEnumerator _PlayPreBattleEffects()
+    public void PlayPreBattleEffects()
     {
         if (battleState <= 1)
-        {
-            yield return new WaitForSeconds(2f);
+            StartCoroutine(PlayPreFirstBattleEffects());
+    }
 
-            // Voice
+    IEnumerator PlayPreFirstBattleEffects()
+    {
+        yield return new WaitForSeconds(2f);
 
-            yield return new WaitForSeconds(5f);
+        // Voice
 
-            battleState++;
-        }
+        yield return new WaitForSeconds(5f);
+
+        battleState++;
     }
 
     public void PlayBattleEffects()
     {
         if (battleState <= 1)
-        {
-            BlankScreenAnimator.Play("FadeEnter");
-
-            StartCoroutine(_PlayBattleEffects());
-        }
+            StartCoroutine(PlayFirstBattleEffects());
     }
 
-    IEnumerator _PlayBattleEffects()
+    IEnumerator PlayFirstBattleEffects()
     {
+        BlankScreenAnimator.Play("FadeEnter");
         yield return new WaitForSeconds(1f);
 
         PunchSounds.PlayPunchLong();
@@ -70,19 +78,31 @@ public class GameLogic : MonoBehaviour
             yield return new WaitForSeconds(0.025f);
         }
 
+        yield return new WaitForSeconds(4f);
+
+        StartCoroutine(FadeInText(MessageTextMeshPro));
+        yield return new WaitForSeconds(4f);
+
+        StartCoroutine(FadeInText(SubMessageTextMeshPro));
         yield return new WaitForSeconds(5f);
+
+        StartCoroutine(FadeOutText(MessageTextMeshPro));
+        StartCoroutine(FadeOutText(SubMessageTextMeshPro));
+        yield return new WaitForSeconds(3f);
 
         battleState++;
     }
 
-    public void PostBattleSetup()
+    public void PostFirstBattleSetup()
     {
         AntiPlayerFollow.Respawn();
 
-        StartCoroutine(PlayPostBattleEffects());
+        StartCoroutine(PlayPostFirstBattleEffects());
+
+        battleState = 3;
     }
 
-    IEnumerator PlayPostBattleEffects()
+    IEnumerator PlayPostFirstBattleEffects()
     {
         for (float f = 0f; f < 0.05f; f += 0.0025f)
         {
@@ -94,7 +114,7 @@ public class GameLogic : MonoBehaviour
 
         RandomSoundsController.Active = true;
 
-        battleState = 3;
+        battleState = 4;
     }
 
     public void AfterPostBattleSetup()
@@ -105,26 +125,59 @@ public class GameLogic : MonoBehaviour
         FirstPersonController.LockCamera = false;
         PlayerMovement.LockMovement = false;
 
-        battleState = 4;
+        AntiPlayerFollow.State = 2;
+        AntiPlayerFollow.CurrentTargetPosition = AntiPlayerFollow.transform.position;
+        AntiPlayerAnimator.SetBool("isRunning", true);
+
+        DetectPlayer.State = 0;
+
+        battleState = 5;
     }
 
-    public void EndGame()
+    public void WinGame()
     {
-        StartCoroutine(StartEndGameScene());
+        StartCoroutine(StartWonGameScene());
     }
 
-    IEnumerator StartEndGameScene()
+    IEnumerator StartWonGameScene()
     {
         BlankScreenAnimator.Play("FadeEnter");
 
         yield return new WaitForSeconds(1f);
 
-        SceneManager.LoadScene("End");
+        GameOver.Reason = 0;
+        SceneManager.LoadScene("GameOver");
+    }
+
+    IEnumerator FadeInText(TextMeshProUGUI textMeshPro)
+    {
+        for (float f = 0f; f < 1f; f += 0.05f)
+        {
+            Color color = textMeshPro.color;
+            color.a = f;
+            textMeshPro.color = color;
+
+            yield return new WaitForSeconds(0.025f);
+        }
+    }
+
+    IEnumerator FadeOutText(TextMeshProUGUI textMeshPro)
+    {
+        for (float f = 1f; f > 0; f -= 0.05f)
+        {
+            Color color = textMeshPro.color;
+            color.a = f;
+            textMeshPro.color = color;
+
+            yield return new WaitForSeconds(0.025f);
+        }
+
+        textMeshPro.enabled = false;
     }
 
     private void Update()
     {
-        if (battleState == 2) PostBattleSetup();
-        if (battleState == 3) AfterPostBattleSetup();
+        if (battleState == 2) PostFirstBattleSetup();
+        if (battleState == 4) AfterPostBattleSetup();
     }
 }

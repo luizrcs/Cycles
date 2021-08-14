@@ -24,7 +24,7 @@ public class DeckGenerator
         }
     }
 
-    public System.Random Random = new System.Random();
+    public System.Random Random = new();
 
     private int corridorsX;
     private int corridorsY;
@@ -33,8 +33,7 @@ public class DeckGenerator
 
     private double corridorClosureProbability;
 
-    public int Width;
-    public int Height;
+    public static int Width, Height;
     public int[,] Matrix;
 
     private int corridorWidth;

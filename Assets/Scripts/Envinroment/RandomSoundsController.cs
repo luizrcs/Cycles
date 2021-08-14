@@ -13,7 +13,7 @@ public class RandomSoundsController : MonoBehaviour
     private float lastTime = 0f;
     private float delay = 5f;
 
-    private System.Random random = new System.Random();
+    private System.Random random = new();
 
     private void Start()
     {

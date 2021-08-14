@@ -6,7 +6,7 @@ public class PlayerPath : MonoBehaviour
 {
     public bool Active = true;
 
-    public Queue<ulong> Queue = new Queue<ulong>();
+    public Queue<ulong> Queue = new();
 
     private float timeResolution = 100f;
     private float lastTime = 0f;

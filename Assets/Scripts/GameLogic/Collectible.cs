@@ -7,6 +7,8 @@ public class Collectible : MonoBehaviour
     public GameObject Self;
     public int Id;
 
+    public AudioSource Sound;
+
     private ObjectivesController objectives;
 
     private void Start()
@@ -22,6 +24,7 @@ public class Collectible : MonoBehaviour
     private void Collect()
     {
         objectives.Collect(Id);
+        Sound.Play();
         Self.SetActive(false);
     }
 }

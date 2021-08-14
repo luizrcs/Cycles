@@ -15,7 +15,7 @@ public class ObjectivesController : MonoBehaviour
     public void Collect(int id)
     {
         collectibles[id] = true;
-        if (CheckCollectibles()) GameLogic.EndGame();
+        if (CheckCollectibles()) GameLogic.WinGame();
 
         StartCoroutine(EnableCheckMark(id));
     }
