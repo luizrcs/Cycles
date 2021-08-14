@@ -8,18 +8,18 @@ public class SkipController : MonoBehaviour
 {
     public Animator BlankScreenAnimator;
 
-    public void ForceStartGameScene()
+    public void ForceStartPreGameScene()
     {
         GetComponent<Button>().interactable = false;
-        StartCoroutine(StartGameScene());
+        StartCoroutine(StartPreGameScene());
     }
 
-    IEnumerator StartGameScene()
+    IEnumerator StartPreGameScene()
     {
         BlankScreenAnimator.Play("FadeEnter");
 
         yield return new WaitForSeconds(1f);
 
-        SceneManager.LoadScene("Game");
+        SceneManager.LoadScene("PreGame");
     }
 }

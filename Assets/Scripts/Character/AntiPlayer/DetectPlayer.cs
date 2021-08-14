@@ -83,8 +83,8 @@ public class DetectPlayer : MonoBehaviour
         float step = 15f * Time.deltaTime;
 
         rigidbody.MovePosition(Vector3.MoveTowards(position, playerPosition, step));
-        transform.LookAt(playerPosition);
-
         StepSounds.PlayStepSound();
+
+        transform.LookAt(playerPosition);
     }
 }

@@ -24,6 +24,8 @@ public class GameLogic : MonoBehaviour
     public TextMeshProUGUI MessageTextMeshPro;
     public TextMeshProUGUI SubMessageTextMeshPro;
 
+    public GameObject Deck;
+
     private int battleState = 0;
 
     private void Start()
@@ -32,6 +34,8 @@ public class GameLogic : MonoBehaviour
         color.a = 0f;
         MessageTextMeshPro.color = color;
         SubMessageTextMeshPro.color = color;
+
+        GlowDoors();
     }
 
     public void PlayPreBattleEffects()
@@ -55,6 +59,8 @@ public class GameLogic : MonoBehaviour
     {
         if (battleState <= 1)
             StartCoroutine(PlayFirstBattleEffects());
+        else
+            StartCoroutine(PlaySecondBattleEffects());
     }
 
     IEnumerator PlayFirstBattleEffects()
@@ -71,7 +77,6 @@ public class GameLogic : MonoBehaviour
         PunchSounds.PlayPunchShort();
 
         RandomSoundsController.Active = false;
-
         for (float f = 0.05f; f > 0f; f -= 0.0025f)
         {
             BackgroundSoundsController.volume = f;
@@ -91,6 +96,32 @@ public class GameLogic : MonoBehaviour
         yield return new WaitForSeconds(3f);
 
         battleState++;
+    }
+
+    IEnumerator PlaySecondBattleEffects()
+    {
+        BlankScreenAnimator.Play("FadeEnter");
+        yield return new WaitForSeconds(1f);
+
+        PunchSounds.PlayPunchLong();
+        yield return new WaitForSeconds(1f);
+
+        PunchSounds.PlayPunchShort();
+        yield return new WaitForSeconds(1f);
+
+        PunchSounds.PlayPunchShort();
+
+        RandomSoundsController.Active = false;
+        for (float f = 0.05f; f > 0f; f -= 0.0025f)
+        {
+            BackgroundSoundsController.volume = f;
+            yield return new WaitForSeconds(0.025f);
+        }
+
+        yield return new WaitForSeconds(2f);
+
+        GameOver.Reason = 0;
+        SceneManager.LoadScene("GameOver");
     }
 
     public void PostFirstBattleSetup()
@@ -134,8 +165,34 @@ public class GameLogic : MonoBehaviour
         battleState = 5;
     }
 
+    public void FinalObjective()
+    {
+        StartCoroutine(_FinalObjective());
+    }
+
+    IEnumerator _FinalObjective()
+    {
+        yield return new WaitForSeconds(1f);
+
+        // Voice
+
+        ExitDoorController.EndGame = true;
+        GlowDoors();
+    }
+
+    public void GlowDoors()
+    {
+        foreach (Animator animator in Deck.GetComponentsInChildren<Animator>())
+            if (animator.CompareTag("Exit")) animator.SetBool("isGlowing", true);
+    }
+
     public void WinGame()
     {
+        PlayerMovement.LockMovement = true;
+
+        AntiPlayerFollow.State = 3;
+        DetectPlayer.State = 3;
+
         StartCoroutine(StartWonGameScene());
     }
 
@@ -143,10 +200,16 @@ public class GameLogic : MonoBehaviour
     {
         BlankScreenAnimator.Play("FadeEnter");
 
+        RandomSoundsController.Active = false;
+        for (float f = 0.05f; f > 0f; f -= 0.0025f)
+        {
+            BackgroundSoundsController.volume = f;
+            yield return new WaitForSeconds(0.025f);
+        }
+
         yield return new WaitForSeconds(1f);
 
-        GameOver.Reason = 0;
-        SceneManager.LoadScene("GameOver");
+        SceneManager.LoadScene("Win");
     }
 
     IEnumerator FadeInText(TextMeshProUGUI textMeshPro)

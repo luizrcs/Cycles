@@ -135,6 +135,7 @@ public class AntiPlayerFollow : MonoBehaviour
         {
             float step = 7.5f * Time.deltaTime;
             transform.position = Vector3.MoveTowards(currentPosition, CurrentTargetPosition, step);
+            StepSounds.PlayStepSound();
 
             Quaternion rotation = Quaternion.LookRotation(CurrentTargetPosition - currentPosition);
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 10f * Time.deltaTime);

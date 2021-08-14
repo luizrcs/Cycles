@@ -6,6 +6,7 @@ using UnityEngine.UI;
 
 public class NewGameController : MonoBehaviour
 {
+    public Button CreditsButton;
     public Button SkipButton;
 
     public Animator CameraAnimator;
@@ -23,11 +24,13 @@ public class NewGameController : MonoBehaviour
     public Text[] Texts;
 
     private TextMeshProUGUI textMeshPro;
+    private TextMeshProUGUI creditsTextMeshPro;
     private TextMeshProUGUI skipTextMeshPro;
 
     void Start()
     {
         textMeshPro = GetComponent<TextMeshProUGUI>();
+        creditsTextMeshPro = CreditsButton.GetComponent<TextMeshProUGUI>();
         skipTextMeshPro = SkipButton.GetComponent<TextMeshProUGUI>();
 
         Color color = skipTextMeshPro.color;
@@ -37,14 +40,19 @@ public class NewGameController : MonoBehaviour
 
     public void PlayStoryboard()
     {
+        CreditsButton.interactable = false;
+        StartCoroutine(FadeOutCreditsButton());
+
         GetComponent<Button>().interactable = false;
         StartCoroutine(FadeOutButton());
 
         StartCoroutine(FadeOutTexts());
         StartCoroutine(FadeInSkipButton());
 
-        CameraAnimator.Play("StoryboardCamera");
-        LanternAnimator.Play("StoryboardLantern");
+        CameraAnimator.Play("MoveCamera");
+        LanternAnimator.Play("MoveLantern");
+
+        StartCoroutine(PlayStoryboardCameraAnimation());
 
         StartCoroutine(PlayStoryboardAnimation(Storyboard_0, 3f));
         StartCoroutine(PlayStoryboardAnimation(Storyboard_1, 7f));
@@ -53,7 +61,7 @@ public class NewGameController : MonoBehaviour
         StartCoroutine(PlayStoryboardAnimation(Storyboard_4, 28f));
         StartCoroutine(PlayStoryboardAnimation(Storyboard_5, 35f));
 
-        StartCoroutine(StartGameScene());
+        StartCoroutine(StartPreGameScene());
     }
 
     IEnumerator FadeInSkipButton()
@@ -88,6 +96,22 @@ public class NewGameController : MonoBehaviour
         textMeshPro.enabled = false;
     }
 
+    IEnumerator FadeOutCreditsButton()
+    {
+        yield return new WaitForSeconds(2f);
+
+        for (float f = 1f; f > 0f; f -= 0.05f)
+        {
+            Color color = creditsTextMeshPro.color;
+            color.a = f;
+            creditsTextMeshPro.color = color;
+
+            yield return new WaitForSeconds(0.05f);
+        }
+
+        creditsTextMeshPro.enabled = false;
+    }
+
     IEnumerator FadeOutTexts()
     {
         yield return new WaitForSeconds(2f);
@@ -108,6 +132,13 @@ public class NewGameController : MonoBehaviour
             text.enabled = false;
     }
 
+    IEnumerator PlayStoryboardCameraAnimation()
+    {
+        yield return new WaitForSeconds(4f);
+        CameraAnimator.Play("StoryboardCamera");
+        LanternAnimator.Play("StoryboardLantern");
+    }
+
     IEnumerator PlayStoryboardAnimation(Animator storyboardAnimator, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -115,7 +146,7 @@ public class NewGameController : MonoBehaviour
         storyboardAnimator.Play("Storyboard");
     }
 
-    IEnumerator StartGameScene()
+    IEnumerator StartPreGameScene()
     {
         yield return new WaitForSeconds(40f);
 
@@ -123,6 +154,6 @@ public class NewGameController : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
-        SceneManager.LoadScene("Game");
+        SceneManager.LoadScene("PreGame");
     }
 }

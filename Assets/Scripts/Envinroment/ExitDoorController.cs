@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class GameOver
+public static class ExitDoorController
 {
-    public static int Reason = 0;
+    public static bool EndGame = false;
 }
