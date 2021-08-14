@@ -34,8 +34,6 @@ public class GameLogic : MonoBehaviour
         color.a = 0f;
         MessageTextMeshPro.color = color;
         SubMessageTextMeshPro.color = color;
-
-        GlowDoors();
     }
 
     public void PlayPreBattleEffects()
@@ -177,13 +175,6 @@ public class GameLogic : MonoBehaviour
         // Voice
 
         ExitDoorController.EndGame = true;
-        GlowDoors();
-    }
-
-    public void GlowDoors()
-    {
-        foreach (Animator animator in Deck.GetComponentsInChildren<Animator>())
-            if (animator.CompareTag("Exit")) animator.SetBool("isGlowing", true);
     }
 
     public void WinGame()

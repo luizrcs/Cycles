@@ -16,7 +16,7 @@ public class PlayerPath : MonoBehaviour
         if (Active)
         {
             float currentTime = Time.time;
-            if (currentTime - lastTime > 0.01)
+            if (currentTime - lastTime > 1f / timeResolution)
             {
                 lastTime = currentTime;
                 Queue.Enqueue(CurrentPosition());

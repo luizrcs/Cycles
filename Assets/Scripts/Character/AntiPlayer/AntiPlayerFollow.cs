@@ -33,6 +33,10 @@ public class AntiPlayerFollow : MonoBehaviour
 
     void Update()
     {
+        print("Queue: " + playerPath.Queue.Count);
+        print("Time: " + Time.time);
+        print("Peek: " + PeekTime());
+
         switch (State)
         {
             case 1:

@@ -11,7 +11,7 @@ public class FirstPersonController : MonoBehaviour
 
     public Transform PlayerTransform;
 
-    public bool LockCamera = false;
+    public bool LockCamera = true;
     private float rotationX = 0.0f;
 
     void Start()

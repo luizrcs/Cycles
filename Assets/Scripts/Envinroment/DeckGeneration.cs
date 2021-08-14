@@ -22,6 +22,8 @@ public class DeckGeneration : MonoBehaviour
     public GameObject Wall_Door_A;
     public GameObject Wall_Door_B;
 
+    public GameObject ExitDoor;
+
     public GameObject Room_A;
     public GameObject Room_B;
 
@@ -183,7 +185,17 @@ public class DeckGeneration : MonoBehaviour
 
                 GameObject wall = ((x - 1) % 4 == 0 ^ (y - 1) % 4 == 0) ? Wall_A : Wall_B;
 
-                if (north == 0) Instantiate(wall, new(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
+                if (north == 0)
+                {
+                    if (
+                        y == DeckGenerator.Height - 2
+                        && (x - 1) % deckGenerator.RoomDistance == 0
+                        && x != 1
+                        && x != DeckGenerator.Width - 2
+                    ) wall = ExitDoor;
+
+                    Instantiate(wall, new(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
+                }
                 else if (north >= 4 && north < 12)
                 {
                     int corner = north / 4;
@@ -191,7 +203,17 @@ public class DeckGeneration : MonoBehaviour
                     Instantiate(wallDoor, new(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
                 }
 
-                if (east == 0) Instantiate(wall, new(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
+                if (east == 0)
+                {
+                    if (
+                        x == DeckGenerator.Width - 2
+                        && (y - 1) % deckGenerator.RoomDistance == 0
+                        && y != 1
+                        && y != DeckGenerator.Height - 2
+                    ) wall = ExitDoor;
+
+                    Instantiate(wall, new(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
+                }
                 else if (east >= 4 && east < 12)
                 {
                     int corner = east / 4;
@@ -199,7 +221,17 @@ public class DeckGeneration : MonoBehaviour
                     Instantiate(wallDoor, new(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
                 }
 
-                if (south == 0) Instantiate(wall, new(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
+                if (south == 0)
+                {
+                    if (
+                        y == 1
+                        && (x - 1) % deckGenerator.RoomDistance == 0
+                        && x != 1
+                        && x != DeckGenerator.Width - 2
+                    ) wall = ExitDoor;
+
+                    Instantiate(wall, new(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
+                }
                 else if (south >= 4 && south < 12)
                 {
                     int corner = south / 4;
@@ -207,7 +239,32 @@ public class DeckGeneration : MonoBehaviour
                     Instantiate(wallDoor, new(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
                 }
 
-                if (west == 0) Instantiate(wall, new(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
+                if (west == 0)
+                {
+                    if (
+                        x == 1
+                        && (y - 1) % deckGenerator.RoomDistance == 0
+                        && y != 1
+                        && y != DeckGenerator.Height - 2
+                    ) wall = ExitDoor;
+
+                    GameObject theWall = Instantiate(wall, new(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
+
+                    if (deckX == 3.75f && deckZ == 71.25f)
+                    {
+                        GameObject enterDoor = null;
+                        foreach(Transform transform in theWall.GetComponentsInChildren<Transform>())
+                        {
+                            if (transform.CompareTag("Exit"))
+                            {
+                                enterDoor = transform.gameObject;
+                                break;
+                            }
+                        }
+
+                        GetComponent<EnterDoorContainer>().EnterDoor = enterDoor;
+                    }
+                }
                 else if (west >= 4 && west < 12)
                 {
                     int corner = west / 4;

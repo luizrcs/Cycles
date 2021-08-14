@@ -9,7 +9,7 @@ public class PlayerMovement : MonoBehaviour
 
     public StepSounds StepSounds;
 
-    public bool LockMovement = false;
+    public bool LockMovement = true;
     public int Speed;
 
     void Update()

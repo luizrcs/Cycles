@@ -5,8 +5,8 @@ using UnityEngine;
 
 public class DeckGenerator
 {
-    private int roomSize;
-    private int roomDistance;
+    public int RoomSize;
+    public int RoomDistance;
 
     public int RoomsX, RoomsY;
     public int[,] Rooms;
@@ -42,8 +42,8 @@ public class DeckGenerator
 
     public DeckGenerator()
     {
-        roomSize = 3;
-        roomDistance = roomSize + 3;
+        RoomSize = 3;
+        RoomDistance = RoomSize + 3;
 
         RoomsX = 3;
         RoomsY = 6;
@@ -57,8 +57,8 @@ public class DeckGenerator
 
         corridorClosureProbability = 0.1;
 
-        Width = 3 + roomDistance * RoomsX;
-        Height = 3 + roomDistance * RoomsY;
+        Width = 3 + RoomDistance * RoomsX;
+        Height = 3 + RoomDistance * RoomsY;
         Matrix = new int[Width, Height];
 
         corridorWidth = Width - 4;
@@ -79,7 +79,7 @@ public class DeckGenerator
         // generate vertical corridors
         for (int corridorX = 0; corridorX < corridorsX; corridorX++)
         {
-            int x = 1 + corridorX * roomDistance;
+            int x = 1 + corridorX * RoomDistance;
             for (int y = 1; y < Height - 1; y++)
             {
                 if (IsBorderCorridorCell(x, y) || y % 2 != 0 || Random.NextDouble() >= corridorClosureProbability)
@@ -90,7 +90,7 @@ public class DeckGenerator
         // generate horizontal corridors
         for (int corridorY = 0; corridorY < corridorsY; corridorY++)
         {
-            int y = 1 + corridorY * roomDistance;
+            int y = 1 + corridorY * RoomDistance;
             for (int x = 1; x < Width - 1; x++)
             {
                 if (IsBorderCorridorCell(x, y) || x % 2 != 0 || Random.NextDouble() >= corridorClosureProbability)
@@ -101,7 +101,7 @@ public class DeckGenerator
         // check vertical dead-ends
         for (int corridorX = 1; corridorX < corridorsX - 1; corridorX++)
         {
-            int x = 1 + corridorX * roomDistance;
+            int x = 1 + corridorX * RoomDistance;
             for (int y = 1; y < Height - 1; y++)
             {
                 if (CheckDeadEnds(x, y) == 0)
@@ -112,7 +112,7 @@ public class DeckGenerator
         // check horizontal dead-ends
         for (int corridorY = 1; corridorY < corridorsY - 1; corridorY++)
         {
-            int y = 1 + corridorY * roomDistance;
+            int y = 1 + corridorY * RoomDistance;
             for (int x = 1; x < Width - 1; x++)
             {
                 if (CheckDeadEnds(x, y) == 0)
@@ -125,10 +125,10 @@ public class DeckGenerator
     {
         for (int roomX = 0; roomX < RoomsX; roomX++)
         {
-            int startX = 3 + roomX * roomDistance;
+            int startX = 3 + roomX * RoomDistance;
             for (int roomY = 0; roomY < RoomsY; roomY++)
             {
-                int startY = 3 + roomY * roomDistance;
+                int startY = 3 + roomY * RoomDistance;
 
                 if (Random.Next(4) != 0)
                 {
@@ -149,20 +149,20 @@ public class DeckGenerator
                     switch (doorSide)
                     {
                         case 0:
-                            if (doorCorner == 0) setDoor(startX + roomSize, startY);
-                            else setDoor(startX + roomSize, startY + roomSize - 1);
+                            if (doorCorner == 0) setDoor(startX + RoomSize, startY);
+                            else setDoor(startX + RoomSize, startY + RoomSize - 1);
                             break;
                         case 1:
                             if (doorCorner == 0) setDoor(startX, startY - 1);
-                            else setDoor(startX + roomSize - 1, startY - 1);
+                            else setDoor(startX + RoomSize - 1, startY - 1);
                             break;
                         case 2:
                             if (doorCorner != 0) setDoor(startX - 1, startY);
-                            else setDoor(startX - 1, startY + roomSize - 1);
+                            else setDoor(startX - 1, startY + RoomSize - 1);
                             break;
                         case 3:
-                            if (doorCorner != 0) setDoor(startX, startY + roomSize);
-                            else setDoor(startX + roomSize - 1, startY + roomSize);
+                            if (doorCorner != 0) setDoor(startX, startY + RoomSize);
+                            else setDoor(startX + RoomSize - 1, startY + RoomSize);
                             break;
                     }
 

@@ -1,5 +1,19 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!64 &1924095171942262184
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 461301250040403725}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 4
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -462981019419857548, guid: 474a87e7738320449a8b20fbe1244c1c, type: 3}
 --- !u!1 &1394159039009146376
 GameObject:
   m_ObjectHideFlags: 0
@@ -192,8 +206,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4625148698584188313}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 3.5, z: -1}
-  m_LocalScale: {x: 4, y: 7, z: 2}
+  m_LocalPosition: {x: 0, y: 3.5, z: -1.5}
+  m_LocalScale: {x: 4, y: 7, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 3357776447895713265}
@@ -288,7 +302,7 @@ GameObject:
   - component: {fileID: 2935802080423469642}
   m_Layer: 0
   m_Name: DoorContainer
-  m_TagString: Untagged
+  m_TagString: Exit
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -391,7 +405,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 37a4fd9b4fdab3a45bbbdfc5a8a96c06, type: 2}
+  - {fileID: 2100000, guid: f6727d460c2add54fabb017d6177349a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -427,6 +441,19 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!65 &817519108184498268
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8057058174957478049}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Size: {x: 0.039999995, y: 0.06999999, z: 0.0040000034}
+  m_Center: {x: -7.8680495e-10, y: 0.034999996, z: 0}
 --- !u!95 &5878920187543066841
 Animator:
   serializedVersion: 4
@@ -447,6 +474,18 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &6708974279994886966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8057058174957478049}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c21ea3a4d22ca3f4482e32e51cfc2f83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &767783313524337244
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -520,6 +559,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 474a87e7738320449a8b20fbe1244c1c, type: 3}
+--- !u!1 &461301250040403725 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 474a87e7738320449a8b20fbe1244c1c, type: 3}
+  m_PrefabInstance: {fileID: 767783313524337244}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &949432303923908023 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 474a87e7738320449a8b20fbe1244c1c, type: 3}
@@ -590,7 +634,7 @@ PrefabInstance:
       objectReference: {fileID: 2100000, guid: 3c3ee17a252b05049a837f492f929ebd, type: 2}
     - target: {fileID: -7029948723529949830, guid: 5815ad0d3fc77ca42b53e1c0b4e33f71, type: 3}
       propertyPath: m_TagString
-      value: Exit
+      value: Untagged
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 5815ad0d3fc77ca42b53e1c0b4e33f71, type: 3}
       propertyPath: m_Name
@@ -608,6 +652,10 @@ PrefabInstance:
       propertyPath: m_Materials.Array.data[1]
       value: 
       objectReference: {fileID: 2100000, guid: a78e7e446121321478f3f8f80584ad7f, type: 2}
+    - target: {fileID: 7202271454713460447, guid: 5815ad0d3fc77ca42b53e1c0b4e33f71, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: b60186d66031a684b9b818be8b0edf80, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5815ad0d3fc77ca42b53e1c0b4e33f71, type: 3}
 --- !u!4 &8514697366875101744 stripped
