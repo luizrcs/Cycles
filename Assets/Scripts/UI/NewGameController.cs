@@ -21,6 +21,8 @@ public class NewGameController : MonoBehaviour
 
     public Animator BlankScreenAnimator;
 
+    public NarrationController NarrationController;
+
     public Text[] Texts;
 
     private TextMeshProUGUI textMeshPro;
@@ -51,6 +53,8 @@ public class NewGameController : MonoBehaviour
 
         CameraAnimator.Play("MoveCamera");
         LanternAnimator.Play("MoveLantern");
+
+        NarrationController.StartNarration();
 
         StartCoroutine(PlayStoryboardCameraAnimation());
 

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerPath : MonoBehaviour
 {
-    public bool Active = true;
+    public bool Active = false;
 
     public Queue<ulong> Queue = new();
 

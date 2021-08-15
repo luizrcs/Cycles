@@ -9,6 +9,11 @@ public class GameLogic : MonoBehaviour
     public Animator BlankScreenAnimator;
 
     public AudioSource Speech;
+    public AudioClip WhatSound;
+    public AudioClip WhoAreYou;
+    public AudioClip MyHead;
+    public AudioClip GetOut;
+
     public PunchSounds PunchSounds;
 
     public AudioSource BackgroundSoundsController;
@@ -44,9 +49,10 @@ public class GameLogic : MonoBehaviour
 
     IEnumerator PlayPreFirstBattleEffects()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
-        // Voice
+        Speech.clip = WhoAreYou;
+        Speech.Play();
 
         yield return new WaitForSeconds(5f);
 
@@ -122,6 +128,35 @@ public class GameLogic : MonoBehaviour
         SceneManager.LoadScene("GameOver");
     }
 
+    public void TimeUp()
+    {
+        AntiPlayerFollow.State = 0;
+        AntiPlayerAnimator.SetBool("isRunning", false);
+
+        DetectPlayer.State = 3;
+
+        StartCoroutine(PlayTimeUpEffects());
+    }
+
+    IEnumerator PlayTimeUpEffects()
+    {
+        BlankScreenAnimator.Play("FadeEnter");
+        yield return new WaitForSeconds(1f);
+
+        RandomSoundsController.PlayTimeParadox();
+
+        for (float f = 0.05f; f > 0f; f -= 0.0025f)
+        {
+            BackgroundSoundsController.volume = f;
+            yield return new WaitForSeconds(0.025f);
+        }
+
+        yield return new WaitForSeconds(2f);
+
+        GameOver.Reason = 1;
+        SceneManager.LoadScene("GameOver");
+    }
+
     public void PostFirstBattleSetup()
     {
         AntiPlayerFollow.Respawn();
@@ -142,6 +177,11 @@ public class GameLogic : MonoBehaviour
         BlankScreenAnimator.Play("FadeExit");
 
         RandomSoundsController.Active = true;
+
+        yield return new WaitForSeconds(1f);
+
+        Speech.clip = MyHead;
+        Speech.Play();
 
         battleState = 4;
     }
@@ -170,9 +210,10 @@ public class GameLogic : MonoBehaviour
 
     IEnumerator _FinalObjective()
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.5f);
 
-        // Voice
+        Speech.clip = GetOut;
+        Speech.Play();
 
         ExitDoorController.EndGame = true;
     }

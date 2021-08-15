@@ -7,10 +7,16 @@ public class PlayerStart : MonoBehaviour
     public FirstPersonController FirstPersonController;
     public PlayerMovement PlayerMovement;
 
+    private PlayerPath playerPath;
+
     public EnterDoorContainer EnterDoorContainer;
 
     private Animator enterDoorAnimator;
     private Collider enterDoorCollider;
+
+    public AudioClip AnyoneThere;
+    public AudioSource Speech;
+    public StepSounds StepSounds;
 
     private bool startGame = false;
 
@@ -18,6 +24,8 @@ public class PlayerStart : MonoBehaviour
 
     void Start()
     {
+        playerPath = GetComponent<PlayerPath>();
+
         StartCoroutine(BeginStart());
     }
 
@@ -29,6 +37,9 @@ public class PlayerStart : MonoBehaviour
             {
                 float step = 5f * Time.deltaTime;
                 transform.position = Vector3.MoveTowards(transform.position, startTarget, step);
+                StepSounds.PlayStepSound();
+
+                if (transform.position.x >= 0) playerPath.Active = true;
             }
             else
             {
@@ -63,5 +74,8 @@ public class PlayerStart : MonoBehaviour
 
         FirstPersonController.LockCamera = false;
         PlayerMovement.LockMovement = false;
+
+        Speech.clip = AnyoneThere;
+        Speech.Play();
     }
 }

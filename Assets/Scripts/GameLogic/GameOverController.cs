@@ -16,7 +16,7 @@ public class GameOverController : MonoBehaviour
                 ReasonTextMeshPro.text = "Você foi encontrado\ne não conseguiu escapar...";
                 break;
             case 1:
-                ReasonTextMeshPro.text = "Tempo demais se passou e um paradoxo\nfez com que você deixasse de existir...";
+                ReasonTextMeshPro.text = "Tempo demais se passou, uma nova\nversão sua chegou ao navio e um paradoxo\nfez com que você deixasse de existir...";
                 break;
         }
 

@@ -7,6 +7,7 @@ public class RandomSoundsController : MonoBehaviour
     public bool Active = true;
 
     public AudioClip[] sounds;
+    public AudioClip TimeParadox;
 
     private AudioSource audioSource;
 
@@ -34,5 +35,13 @@ public class RandomSoundsController : MonoBehaviour
                 audioSource.Play();
             }
         }
+    }
+
+    public void PlayTimeParadox()
+    {
+        Active = false;
+
+        audioSource.clip = TimeParadox;
+        audioSource.Play();
     }
 }

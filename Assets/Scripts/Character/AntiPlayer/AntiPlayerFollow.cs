@@ -20,7 +20,7 @@ public class AntiPlayerFollow : MonoBehaviour
     private int lastTargetDirection;
     private int targetMatrixX, targetMatrixY;
 
-    private float waitTime = 5f;
+    private float waitTime = 120f;
     private float timeResolution = 100f;
 
     private System.Random Random = new();
@@ -33,10 +33,6 @@ public class AntiPlayerFollow : MonoBehaviour
 
     void Update()
     {
-        print("Queue: " + playerPath.Queue.Count);
-        print("Time: " + Time.time);
-        print("Peek: " + PeekTime());
-
         switch (State)
         {
             case 1:

@@ -8,6 +8,8 @@ public class SkipController : MonoBehaviour
 {
     public Animator BlankScreenAnimator;
 
+    public AudioSource Narrator;
+
     public void ForceStartPreGameScene()
     {
         GetComponent<Button>().interactable = false;
@@ -17,6 +19,12 @@ public class SkipController : MonoBehaviour
     IEnumerator StartPreGameScene()
     {
         BlankScreenAnimator.Play("FadeEnter");
+
+        for (float f = 0.05f; f > 0f; f -= 0.0025f)
+        {
+            Narrator.volume = f;
+            yield return new WaitForSeconds(0.025f);
+        }
 
         yield return new WaitForSeconds(1f);
 
