@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
@@ -12,24 +10,28 @@ public class PlayerMovement : MonoBehaviour
     public bool LockMovement = true;
     public int Speed;
 
+    private const float WalkY = 4.75f;
+
+    private static readonly int IsRunning = Animator.StringToHash("isRunning");
+
     void Update()
     {
         if (!LockMovement)
         {
             Vector3 currentPosition = transform.position;
-            transform.position = new(currentPosition.x, 4.75f, currentPosition.z);
+            if (!Mathf.Approximately(currentPosition.y, WalkY))
+                transform.position = new(currentPosition.x, WalkY, currentPosition.z);
 
             float movementX = Input.GetAxis("Horizontal");
             float movementZ = Input.GetAxis("Vertical");
 
-            Vector3 movement = Vector3.ClampMagnitude((transform.right * movementX + transform.forward * movementZ), 1f);
-            Vector3 motion = movement * Speed;
-            PlayerController.Move(motion * Time.deltaTime);
+            Vector3 movement = Vector3.ClampMagnitude(transform.right * movementX + transform.forward * movementZ, 1f);
+            PlayerController.Move(Speed * Time.deltaTime * movement);
 
-            bool hasMovement = movement.magnitude != 0;
-            Animator.SetBool("isRunning", hasMovement);
+            bool hasMovement = movement.sqrMagnitude > 0f;
+            Animator.SetBool(IsRunning, hasMovement);
             if (hasMovement) StepSounds.PlayStepSound();
         }
-        else Animator.SetBool("isRunning", false);
+        else Animator.SetBool(IsRunning, false);
     }
 }

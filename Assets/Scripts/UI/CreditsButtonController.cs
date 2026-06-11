@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class CreditsButtonController: MonoBehaviour
+public class CreditsButtonController : MonoBehaviour
 {
     public Button NewGameButton;
 
@@ -27,11 +27,10 @@ public class CreditsButtonController: MonoBehaviour
     public void PlayCredits()
     {
         NewGameButton.interactable = false;
-        StartCoroutine(FadeOutNewGameButton());
-
         GetComponent<Button>().interactable = false;
-        StartCoroutine(FadeOutButton());
 
+        StartCoroutine(FadeOutButtonText(newGameTextMeshPro));
+        StartCoroutine(FadeOutButtonText(textMeshPro));
         StartCoroutine(FadeOutTexts());
 
         CameraAnimator.Play("MoveCamera");
@@ -39,53 +38,23 @@ public class CreditsButtonController: MonoBehaviour
         StartCoroutine(StartCreditsScene());
     }
 
-    IEnumerator FadeOutButton()
+    IEnumerator FadeOutButtonText(TextMeshProUGUI text)
     {
         yield return new WaitForSeconds(2f);
 
-        for (float f = 1f; f > 0f; f -= 0.05f)
-        {
-            Color color = textMeshPro.color;
-            color.a = f;
-            textMeshPro.color = color;
+        yield return Fades.Graphic(text, 1f, 0f, 1f);
 
-            yield return new WaitForSeconds(0.05f);
-        }
-
-        textMeshPro.enabled = false;
-    }
-
-    IEnumerator FadeOutNewGameButton()
-    {
-        yield return new WaitForSeconds(2f);
-
-        for (float f = 1f; f > 0f; f -= 0.05f)
-        {
-            Color color = newGameTextMeshPro.color;
-            color.a = f;
-            newGameTextMeshPro.color = color;
-
-            yield return new WaitForSeconds(0.05f);
-        }
-
-        newGameTextMeshPro.enabled = false;
+        text.enabled = false;
     }
 
     IEnumerator FadeOutTexts()
     {
         yield return new WaitForSeconds(2f);
 
-        for (float f = 1f; f > 0; f -= 0.05f)
-        {
-            foreach (Text text in Texts)
-            {
-                Color color = text.color;
-                color.a = f;
-                text.color = color;
-            }
+        foreach (Text text in Texts)
+            StartCoroutine(Fades.Graphic(text, 1f, 0f, 1f));
 
-            yield return new WaitForSeconds(0.05f);
-        }
+        yield return new WaitForSeconds(1f);
 
         foreach (Text text in Texts)
             text.enabled = false;

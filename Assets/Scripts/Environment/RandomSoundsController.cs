@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class RandomSoundsController : MonoBehaviour
@@ -12,9 +10,7 @@ public class RandomSoundsController : MonoBehaviour
     private AudioSource audioSource;
 
     private float lastTime = 0f;
-    private float delay = 5f;
-
-    private System.Random random = new();
+    private const float Delay = 5f;
 
     private void Start()
     {
@@ -26,12 +22,11 @@ public class RandomSoundsController : MonoBehaviour
         if (Active)
         {
             float time = Time.time;
-            if (time - lastTime > delay)
+            if (time - lastTime > Delay)
             {
                 lastTime = time;
 
-                int index = random.Next(sounds.Length);
-                audioSource.clip = sounds[index];
+                audioSource.clip = sounds[Random.Range(0, sounds.Length)];
                 audioSource.Play();
             }
         }

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerTimer : MonoBehaviour
@@ -8,11 +6,18 @@ public class PlayerTimer : MonoBehaviour
 
     public GameLogic GameLogic;
 
-    private float maxTime = 240f;
+    // Counted from scene load, not application start: the old absolute Time.time
+    // check made the paradox fire instantly on any second playthrough.
+    private float elapsed;
+
+    private const float MaxTime = 240f;
 
     void Update()
     {
-        if (active && Time.time > maxTime)
+        if (!active) return;
+
+        elapsed += Time.deltaTime;
+        if (elapsed > MaxTime)
         {
             active = false;
             GameLogic.TimeUp();

@@ -1,6 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class DetectPlayer : MonoBehaviour
@@ -17,14 +14,22 @@ public class DetectPlayer : MonoBehaviour
     public PlayerPath PlayerPath;
 
     public Animator AntiPlayerAnimator;
-    private Rigidbody rigidbody;
+    private Rigidbody body;
 
+    // 0 = searching, 1 = running at the player, 2 = battle, 3 = inactive
     public int State = 0;
+
+    private const float SightDistance = 30f;
+    private const float TouchDistance = 3.5f;
+    private const float BattleDistance = 5f;
+    private const float RunSpeed = 15f;
+
+    private static readonly int IsRunning = Animator.StringToHash("isRunning");
 
     private void Start()
     {
         playerMovement = Player.GetComponent<PlayerMovement>();
-        rigidbody = GetComponent<Rigidbody>();
+        body = GetComponent<Rigidbody>();
     }
 
     void Update()
@@ -32,34 +37,17 @@ public class DetectPlayer : MonoBehaviour
         switch (State)
         {
             case 0:
-                RaycastHit hit;
-                if (Physics.Raycast(transform.position, transform.forward, out hit))
-                {
-                    Transform hitTransform = hit.transform;
-                    if (hitTransform.CompareTag("AntiPlayerDetector"))
-                    {
-                        State = 1;
-                        DeactivateFollower();
-                        AntiPlayerAnimator.SetBool("isRunning", true);
-
-                        FirstPersonController.LockCamera = true;
-                        playerMovement.LockMovement = true;
-
-                        GameLogic.PlayPreBattleEffects();
-                    }
-                }
+                if (AntiPlayerFollow.Engaged && (SeesPlayer() || TouchesPlayer())) StartEncounter();
                 break;
             case 1:
                 MoveTowardsPlayer();
                 FirstPersonController.LookAtAntiPlayer();
 
-                Vector3 position = transform.position;
-                Vector3 playerPosition = Player.transform.position;
-                float distance = Vector3.Distance(position, playerPosition);
-                if (distance < 5f)
+                float distance = Vector3.Distance(transform.position, Player.transform.position);
+                if (distance < BattleDistance)
                 {
                     State = 2;
-                    AntiPlayerAnimator.SetBool("isRunning", false);
+                    AntiPlayerAnimator.SetBool(IsRunning, false);
 
                     GameLogic.PlayBattleEffects();
                 }
@@ -68,6 +56,32 @@ public class DetectPlayer : MonoBehaviour
                 FirstPersonController.LookAtAntiPlayer();
                 break;
         }
+    }
+
+    private bool SeesPlayer()
+    {
+        return Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, SightDistance)
+            && hit.transform.CompareTag("AntiPlayerDetector");
+    }
+
+    // The path replay stops short of the player, so line of sight alone can miss
+    // when it catches up from behind; proximity always starts the encounter.
+    private bool TouchesPlayer()
+    {
+        return AntiPlayerFollow.State == 1
+            && Vector3.Distance(transform.position, Player.transform.position) < TouchDistance;
+    }
+
+    private void StartEncounter()
+    {
+        State = 1;
+        DeactivateFollower();
+        AntiPlayerAnimator.SetBool(IsRunning, true);
+
+        FirstPersonController.LockCamera = true;
+        playerMovement.LockMovement = true;
+
+        GameLogic.PlayPreBattleEffects();
     }
 
     private void DeactivateFollower()
@@ -80,11 +94,14 @@ public class DetectPlayer : MonoBehaviour
     {
         Vector3 position = transform.position;
         Vector3 playerPosition = Player.transform.position;
-        float step = 15f * Time.deltaTime;
+        float step = RunSpeed * Time.deltaTime;
 
-        rigidbody.MovePosition(Vector3.MoveTowards(position, playerPosition, step));
+        Vector3 next = Vector3.MoveTowards(position, playerPosition, step);
+
+        // Never run inside the player's CharacterController; it would shove them around.
+        if (Vector3.Distance(next, playerPosition) > 1.5f) body.MovePosition(next);
+
         StepSounds.PlayStepSound();
-
         transform.LookAt(playerPosition);
     }
 }

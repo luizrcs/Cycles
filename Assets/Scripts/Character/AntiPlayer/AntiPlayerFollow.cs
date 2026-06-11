@@ -1,17 +1,14 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class AntiPlayerFollow : MonoBehaviour
 {
+    // 0 = disabled, 1 = replaying the player's recorded path, 2 = roaming the maze, 3 = stopped
     public int State = 1;
 
     public DeckGeneration DeckGeneration;
 
     public Animator AntiPlayerAnimator;
     public StepSounds StepSounds;
-    private Rigidbody rigidbody;
 
     public GameObject Player;
     private PlayerPath playerPath;
@@ -20,15 +17,42 @@ public class AntiPlayerFollow : MonoBehaviour
     private int lastTargetDirection;
     private int targetMatrixX, targetMatrixY;
 
-    private float waitTime = 120f;
-    private float timeResolution = 100f;
+    // The scene places the AntiPlayer on the player's spawn point. Until the
+    // 120 s delayed path replay begins it must be a ghost — invisible and
+    // non-colliding — or it overlaps the player's CharacterController from the
+    // first frame, slowly shoving them through the maze and triggering an
+    // instant encounter. Story-wise it "enters the ship" 120 s after you did.
+    public bool Engaged { get; private set; }
 
-    private System.Random Random = new();
+    private Rigidbody body;
+
+    private const float FollowDelay = 120f;
+    private const float TimeResolution = 100f;
+
+    // Stop short of the player instead of teleporting into their CharacterController,
+    // which used to physically shove them across the maze. DetectPlayer handles the
+    // encounter once we are this close.
+    private const float EncounterDistance = 3f;
+
+    private const float CellSize = 7.5f;
+    private const float WalkY = 4.75f;
+
+    private static readonly int IsRunning = Animator.StringToHash("isRunning");
 
     void Start()
     {
         playerPath = Player.GetComponent<PlayerPath>();
-        rigidbody = GetComponent<Rigidbody>();
+        body = GetComponent<Rigidbody>();
+
+        SetGhost(true);
+    }
+
+    private void SetGhost(bool ghost)
+    {
+        foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+            renderer.enabled = !ghost;
+        foreach (var collider in GetComponentsInChildren<Collider>(true))
+            collider.enabled = !ghost;
     }
 
     void Update()
@@ -36,29 +60,44 @@ public class AntiPlayerFollow : MonoBehaviour
         switch (State)
         {
             case 1:
-                float currentTime = Time.time;
-                if (playerPath.Queue.Count > 0 && currentTime > waitTime + PeekTime())
-                {
-                    Vector3 targetPosition = TargetPosition();
-                    if (targetPosition != CurrentTargetPosition)
-                    {
-                        CurrentTargetPosition = targetPosition;
-                        rigidbody.MovePosition(CurrentTargetPosition);
-
-                        AntiPlayerAnimator.SetBool("isRunning", true);
-                        StepSounds.PlayStepSound();
-                    }
-                    else AntiPlayerAnimator.SetBool("isRunning", false);
-
-                    Vector3 targetRotation = transform.rotation.eulerAngles;
-                    targetRotation.y = TargetRotationY();
-                    rigidbody.MoveRotation(Quaternion.Euler(targetRotation));
-                }
+                FollowPath();
                 break;
             case 2:
                 Roam();
                 break;
         }
+    }
+
+    private void FollowPath()
+    {
+        if (playerPath.Queue.Count == 0 || Time.time <= FollowDelay + PeekTime()) return;
+
+        if (!Engaged)
+        {
+            Engaged = true;
+            SetGhost(false);
+        }
+
+        if (Vector3.Distance(transform.position, Player.transform.position) < EncounterDistance)
+        {
+            AntiPlayerAnimator.SetBool(IsRunning, false);
+            return;
+        }
+
+        Vector3 targetPosition = TargetPosition();
+        if (targetPosition != CurrentTargetPosition)
+        {
+            CurrentTargetPosition = targetPosition;
+            body.MovePosition(CurrentTargetPosition);
+
+            AntiPlayerAnimator.SetBool(IsRunning, true);
+            StepSounds.PlayStepSound();
+        }
+        else AntiPlayerAnimator.SetBool(IsRunning, false);
+
+        Vector3 targetRotation = transform.rotation.eulerAngles;
+        targetRotation.y = TargetRotationY();
+        body.MoveRotation(Quaternion.Euler(targetRotation));
     }
 
     public void Respawn()
@@ -109,7 +148,7 @@ public class AntiPlayerFollow : MonoBehaviour
     private float PeekTime()
     {
         ulong encodedValue = playerPath.Queue.Peek();
-        return (encodedValue >> 40) / timeResolution;
+        return (encodedValue >> 40) / TimeResolution;
     }
 
     private Vector3 TargetPosition()
@@ -119,7 +158,7 @@ public class AntiPlayerFollow : MonoBehaviour
         float z = ((encodedValue >>= 8) & 0xFFFF) / 10f;
         float x = ((encodedValue >>= 16) & 0xFFFF) / 10f;
 
-        return new(x, 4.75f, z);
+        return new(x, WalkY, z);
     }
 
     private float TargetRotationY()
@@ -133,61 +172,67 @@ public class AntiPlayerFollow : MonoBehaviour
         Vector3 currentPosition = transform.position;
         if (currentPosition != CurrentTargetPosition)
         {
-            float step = 7.5f * Time.deltaTime;
+            float step = CellSize * Time.deltaTime;
             transform.position = Vector3.MoveTowards(currentPosition, CurrentTargetPosition, step);
             StepSounds.PlayStepSound();
 
             Quaternion rotation = Quaternion.LookRotation(CurrentTargetPosition - currentPosition);
             transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 10f * Time.deltaTime);
         }
-        else
+        else PickRoamTarget(currentPosition);
+    }
+
+    private void PickRoamTarget(Vector3 currentPosition)
+    {
+        int[,] matrix = DeckGeneration.Matrix;
+
+        // Biased random walk: half the draws repeat the previous direction so the
+        // roamer prefers straight lines, like the original. Bounded attempts so a
+        // boxed-in roamer can never hard-freeze the game.
+        for (int attempt = 0; attempt < 64; attempt++)
         {
-            int[,] matrix = DeckGeneration.Matrix;
-            int direction;
+            int direction = Random.Range(0, 8);
+            if (direction >= 4) direction = lastTargetDirection;
 
-            while (true)
+            switch (direction)
             {
-                direction = Random.Next(8);
-                if (direction >= 4) direction = lastTargetDirection;
-                switch (direction)
-                {
-                    case 0:
-                        if (matrix[targetMatrixX + 1, targetMatrixY] == 1)
-                        {
-                            targetMatrixX += 2;
-                            CurrentTargetPosition = new(currentPosition.x + 7.5f, 4.75f, currentPosition.z);
-                            goto afterWhile;
-                        }
-                        break;
-                    case 1:
-                        if (matrix[targetMatrixX, targetMatrixY + 1] == 1)
-                        {
-                            targetMatrixY += 2;
-                            CurrentTargetPosition = new(currentPosition.x, 4.75f, currentPosition.z + 7.5f);
-                            goto afterWhile;
-                        }
-                        break;
-                    case 2:
-                        if (matrix[targetMatrixX - 1, targetMatrixY] == 1)
-                        {
-                            targetMatrixX -= 2;
-                            CurrentTargetPosition = new(currentPosition.x - 7.5f, 4.75f, currentPosition.z);
-                            goto afterWhile;
-                        }
-                        break;
-                    case 3:
-                        if (matrix[targetMatrixX, targetMatrixY - 1] == 1)
-                        {
-                            targetMatrixY -= 2;
-                            CurrentTargetPosition = new(currentPosition.x, 4.75f, currentPosition.z - 7.5f);
-                            goto afterWhile;
-                        }
-                        break;
-                }
+                case 0:
+                    if (matrix[targetMatrixX + 1, targetMatrixY] == 1)
+                    {
+                        targetMatrixX += 2;
+                        CurrentTargetPosition = new(currentPosition.x + CellSize, WalkY, currentPosition.z);
+                        lastTargetDirection = direction;
+                        return;
+                    }
+                    break;
+                case 1:
+                    if (matrix[targetMatrixX, targetMatrixY + 1] == 1)
+                    {
+                        targetMatrixY += 2;
+                        CurrentTargetPosition = new(currentPosition.x, WalkY, currentPosition.z + CellSize);
+                        lastTargetDirection = direction;
+                        return;
+                    }
+                    break;
+                case 2:
+                    if (matrix[targetMatrixX - 1, targetMatrixY] == 1)
+                    {
+                        targetMatrixX -= 2;
+                        CurrentTargetPosition = new(currentPosition.x - CellSize, WalkY, currentPosition.z);
+                        lastTargetDirection = direction;
+                        return;
+                    }
+                    break;
+                case 3:
+                    if (matrix[targetMatrixX, targetMatrixY - 1] == 1)
+                    {
+                        targetMatrixY -= 2;
+                        CurrentTargetPosition = new(currentPosition.x, WalkY, currentPosition.z - CellSize);
+                        lastTargetDirection = direction;
+                        return;
+                    }
+                    break;
             }
-
-        afterWhile:
-            lastTargetDirection = direction;
         }
     }
 }

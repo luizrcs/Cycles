@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Collectible : MonoBehaviour
@@ -10,6 +8,7 @@ public class Collectible : MonoBehaviour
     public AudioSource Sound;
 
     private ObjectivesController objectives;
+    private bool collected;
 
     private void Start()
     {
@@ -18,11 +17,15 @@ public class Collectible : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player")) Collect();
+        // The AntiPlayer shares the "Player" tag (so doors open for it);
+        // only the real player carries PlayerMovement.
+        if (!collected && other.GetComponent<PlayerMovement>() != null) Collect();
     }
 
     private void Collect()
     {
+        collected = true;
+
         objectives.Collect(Id);
         Sound.Play();
         Self.SetActive(false);

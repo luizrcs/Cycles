@@ -1,5 +1,4 @@
 using System.Collections;
-using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -20,11 +19,7 @@ public class SkipController : MonoBehaviour
     {
         BlankScreenAnimator.Play("FadeEnter");
 
-        for (float f = 0.05f; f > 0f; f -= 0.0025f)
-        {
-            Narrator.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        StartCoroutine(Fades.Volume(Narrator, Narrator.volume, 0f, 0.5f));
 
         yield return new WaitForSeconds(1f);
 

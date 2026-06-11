@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class DoorTrigger : MonoBehaviour
@@ -12,11 +10,15 @@ public class DoorTrigger : MonoBehaviour
     public GameObject Door;
     public bool Inner;
 
+    // Doors swing positive (inner) or negative (outer) around Y. The old code
+    // compared the raw quaternion Y component; the signed angle is what it meant.
+    private float DoorAngle => Mathf.DeltaAngle(0f, Door.transform.localEulerAngles.y);
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            bool isOpen = Door.transform.localRotation.y != 0f;
+            bool isOpen = Mathf.Abs(DoorAngle) > 1f;
             if (!isOpen)
             {
                 DoorAnimator.Play((Inner ? "Inner" : "Outer") + "DoorOpen");
@@ -29,13 +31,13 @@ public class DoorTrigger : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            float doorRotation = Door.transform.localRotation.y;
-            if (doorRotation > 0f)
+            float angle = DoorAngle;
+            if (angle > 1f)
             {
                 DoorAnimator.Play("InnerDoorClose");
                 DoorClose.Play();
             }
-            else if (doorRotation < 0f)
+            else if (angle < -1f)
             {
                 DoorAnimator.Play("OuterDoorClose");
                 DoorClose.Play();

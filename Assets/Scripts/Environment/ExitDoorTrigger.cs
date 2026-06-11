@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ExitDoorTrigger : MonoBehaviour
@@ -16,7 +14,8 @@ public class ExitDoorTrigger : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (ExitDoorController.EndGame && other.name == "Player")
+        // Only the real player can escape; the AntiPlayer shares the "Player" tag.
+        if (ExitDoorController.EndGame && other.GetComponent<PlayerMovement>() != null)
         {
             DoorAnimator.Play("OuterDoorOpen");
             DoorOpen.Play();

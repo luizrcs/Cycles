@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PunchSounds : MonoBehaviour
@@ -17,7 +15,7 @@ public class PunchSounds : MonoBehaviour
 
     public void PlayPunchShort()
     {
-        Punch.clip = Sounds[index % 2];
+        Punch.clip = Sounds[index % Sounds.Length];
         index++;
 
         Punch.Play();

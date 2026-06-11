@@ -1,16 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ChangeColor : MonoBehaviour
 {
     public string Type;
 
-    private readonly System.Random random = new();
-
     void Start()
     {
-        float newH = (float)random.NextDouble();
+        // Sigmoid pushes hues toward the extremes so colors read as distinct.
+        float newH = Random.value;
         newH = 1 / (1 + Mathf.Exp(-(newH - 0.5f) * 8));
 
         switch (Type)
@@ -26,29 +23,24 @@ public class ChangeColor : MonoBehaviour
 
     void ChangeBedColor(float newH)
     {
-        Material material = transform.GetComponent<MeshRenderer>().material;
-        Color color = material.color;
-
-        float h, s, v;
-        Color.RGBToHSV(color, out h, out s, out v);
-
-        material.color = Color.HSVToRGB(newH, s, v);
+        ShiftHue(GetComponent<MeshRenderer>(), newH);
     }
 
     void ChangeTulipsColor(float newH)
     {
-        foreach (Transform transform in GetComponentsInChildren<Transform>())
+        foreach (Transform child in GetComponentsInChildren<Transform>())
         {
-            if (transform.name.Contains("tulips"))
-            {
-                Material material = transform.GetComponent<MeshRenderer>().material;
-                Color color = material.color;
-
-                float h, s, v;
-                Color.RGBToHSV(color, out h, out s, out v);
-
-                material.color = Color.HSVToRGB(newH, s, v);
-            }
+            if (child.name.Contains("tulips"))
+                ShiftHue(child.GetComponent<MeshRenderer>(), newH);
         }
+    }
+
+    private static void ShiftHue(MeshRenderer renderer, float newH)
+    {
+        if (renderer == null) return;
+
+        Material material = renderer.material;
+        Color.RGBToHSV(material.color, out _, out float s, out float v);
+        material.color = Color.HSVToRGB(newH, s, v);
     }
 }

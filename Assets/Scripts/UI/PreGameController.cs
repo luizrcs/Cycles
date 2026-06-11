@@ -39,14 +39,7 @@ public class PreGameController : MonoBehaviour
     {
         yield return new WaitForSeconds(3f);
 
-        for (float f = 0f; f < 1f; f += 0.05f)
-        {
-            Color color = Message.color;
-            color.a = f;
-            Message.color = color;
-
-            yield return new WaitForSeconds(0.05f);
-        }
+        yield return Fades.Graphic(Message, 0f, 1f, 1f);
 
         yield return new WaitForSeconds(1f);
         StartCoroutine(DisplayRectangles());
@@ -61,31 +54,13 @@ public class PreGameController : MonoBehaviour
     IEnumerator DisplayRectangles()
     {
         foreach (Image rectangle in Rectangles)
-        {
-            for (float f = 0f; f < 1f; f += 0.05f)
-            {
-                Color color = rectangle.color;
-                color.a = f;
-                rectangle.color = color;
-
-                yield return new WaitForSeconds(0.025f);
-            }
-        }
+            yield return Fades.Graphic(rectangle, 0f, 1f, 0.5f);
     }
 
     IEnumerator DisplayItems()
     {
         foreach (Image item in Items)
-        {
-            for (float f = 1f; f > 0f; f -= 0.05f)
-            {
-                Color color = item.color;
-                color.a = f;
-                item.color = color;
-
-                yield return new WaitForSeconds(0.05f);
-            }
-        }
+            yield return Fades.Graphic(item, 1f, 0f, 1f);
     }
 
     IEnumerator StartGameScene()

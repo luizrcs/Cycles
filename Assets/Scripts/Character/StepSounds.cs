@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class StepSounds : MonoBehaviour
@@ -9,9 +7,7 @@ public class StepSounds : MonoBehaviour
     private AudioSource audioSource;
 
     private float lastTime = 0f;
-    private float delay = 0.25f;
-
-    private System.Random random = new System.Random();
+    private const float Delay = 0.25f;
 
     private void Start()
     {
@@ -23,11 +19,10 @@ public class StepSounds : MonoBehaviour
         if (!audioSource.isPlaying)
         {
             float time = Time.time;
-            if (time - lastTime > delay)
+            if (time - lastTime > Delay)
             {
                 lastTime = time;
-                int index = random.Next(Sounds.Length);
-                audioSource.clip = Sounds[index];
+                audioSource.clip = Sounds[Random.Range(0, Sounds.Length)];
                 audioSource.Play();
             }
         }

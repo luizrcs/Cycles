@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -38,14 +37,7 @@ public class BackToMenuButton : MonoBehaviour
 
         BackButton.interactable = true;
 
-        for (float f = 0f; f < 1f; f += 0.05f)
-        {
-            Color color = backTextMeshPro.color;
-            color.a = f;
-            backTextMeshPro.color = color;
-
-            yield return new WaitForSeconds(0.05f);
-        }
+        yield return Fades.Graphic(backTextMeshPro, 0f, 1f, 1f);
     }
 
     IEnumerator StartMainMenuScene()

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -31,10 +30,20 @@ public class GameLogic : MonoBehaviour
 
     public GameObject Deck;
 
+    // 0 = no encounter yet, 1 = first encounter underway, 3..5 = post-battle
+    // recovery, 5 = roaming until the final encounter.
     private int battleState = 0;
+
+    private const float BackgroundVolume = 0.05f;
+
+    private static readonly int IsRunning = Animator.StringToHash("isRunning");
 
     private void Start()
     {
+        // Static cross-scene state must be reset, or a second playthrough
+        // starts with the exit door already active.
+        ExitDoorController.EndGame = false;
+
         Color color = MessageTextMeshPro.color;
         color.a = 0f;
         MessageTextMeshPro.color = color;
@@ -81,11 +90,7 @@ public class GameLogic : MonoBehaviour
         PunchSounds.PlayPunchShort();
 
         RandomSoundsController.Active = false;
-        for (float f = 0.05f; f > 0f; f -= 0.0025f)
-        {
-            BackgroundSoundsController.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Volume(BackgroundSoundsController, BackgroundVolume, 0f, 0.5f);
 
         yield return new WaitForSeconds(4f);
 
@@ -99,7 +104,7 @@ public class GameLogic : MonoBehaviour
         StartCoroutine(FadeOutText(SubMessageTextMeshPro));
         yield return new WaitForSeconds(3f);
 
-        battleState++;
+        PostFirstBattleSetup();
     }
 
     IEnumerator PlaySecondBattleEffects()
@@ -116,11 +121,7 @@ public class GameLogic : MonoBehaviour
         PunchSounds.PlayPunchShort();
 
         RandomSoundsController.Active = false;
-        for (float f = 0.05f; f > 0f; f -= 0.0025f)
-        {
-            BackgroundSoundsController.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Volume(BackgroundSoundsController, BackgroundVolume, 0f, 0.5f);
 
         yield return new WaitForSeconds(2f);
 
@@ -131,7 +132,7 @@ public class GameLogic : MonoBehaviour
     public void TimeUp()
     {
         AntiPlayerFollow.State = 0;
-        AntiPlayerAnimator.SetBool("isRunning", false);
+        AntiPlayerAnimator.SetBool(IsRunning, false);
 
         DetectPlayer.State = 3;
 
@@ -145,11 +146,7 @@ public class GameLogic : MonoBehaviour
 
         RandomSoundsController.PlayTimeParadox();
 
-        for (float f = 0.05f; f > 0f; f -= 0.0025f)
-        {
-            BackgroundSoundsController.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Volume(BackgroundSoundsController, BackgroundVolume, 0f, 0.5f);
 
         yield return new WaitForSeconds(2f);
 
@@ -157,22 +154,18 @@ public class GameLogic : MonoBehaviour
         SceneManager.LoadScene("GameOver");
     }
 
-    public void PostFirstBattleSetup()
+    private void PostFirstBattleSetup()
     {
+        battleState = 3;
+
         AntiPlayerFollow.Respawn();
 
         StartCoroutine(PlayPostFirstBattleEffects());
-
-        battleState = 3;
     }
 
     IEnumerator PlayPostFirstBattleEffects()
     {
-        for (float f = 0f; f < 0.05f; f += 0.0025f)
-        {
-            BackgroundSoundsController.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Volume(BackgroundSoundsController, 0f, BackgroundVolume, 0.5f);
 
         BlankScreenAnimator.Play("FadeExit");
 
@@ -183,20 +176,18 @@ public class GameLogic : MonoBehaviour
         Speech.clip = MyHead;
         Speech.Play();
 
-        battleState = 4;
+        AfterPostBattleSetup();
     }
 
-    public void AfterPostBattleSetup()
+    private void AfterPostBattleSetup()
     {
-        DetectPlayer.State = 3;
-
         FirstPersonController.ResetRotation();
         FirstPersonController.LockCamera = false;
         PlayerMovement.LockMovement = false;
 
         AntiPlayerFollow.State = 2;
         AntiPlayerFollow.CurrentTargetPosition = AntiPlayerFollow.transform.position;
-        AntiPlayerAnimator.SetBool("isRunning", true);
+        AntiPlayerAnimator.SetBool(IsRunning, true);
 
         DetectPlayer.State = 0;
 
@@ -233,11 +224,7 @@ public class GameLogic : MonoBehaviour
         BlankScreenAnimator.Play("FadeEnter");
 
         RandomSoundsController.Active = false;
-        for (float f = 0.05f; f > 0f; f -= 0.0025f)
-        {
-            BackgroundSoundsController.volume = f;
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Volume(BackgroundSoundsController, BackgroundVolume, 0f, 0.5f);
 
         yield return new WaitForSeconds(1f);
 
@@ -246,33 +233,13 @@ public class GameLogic : MonoBehaviour
 
     IEnumerator FadeInText(TextMeshProUGUI textMeshPro)
     {
-        for (float f = 0f; f < 1f; f += 0.05f)
-        {
-            Color color = textMeshPro.color;
-            color.a = f;
-            textMeshPro.color = color;
-
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Graphic(textMeshPro, 0f, 1f, 0.5f);
     }
 
     IEnumerator FadeOutText(TextMeshProUGUI textMeshPro)
     {
-        for (float f = 1f; f > 0; f -= 0.05f)
-        {
-            Color color = textMeshPro.color;
-            color.a = f;
-            textMeshPro.color = color;
-
-            yield return new WaitForSeconds(0.025f);
-        }
+        yield return Fades.Graphic(textMeshPro, 1f, 0f, 0.5f);
 
         textMeshPro.enabled = false;
-    }
-
-    private void Update()
-    {
-        if (battleState == 2) PostFirstBattleSetup();
-        if (battleState == 4) AfterPostBattleSetup();
     }
 }
