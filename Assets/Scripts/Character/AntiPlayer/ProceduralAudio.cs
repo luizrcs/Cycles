@@ -87,6 +87,53 @@ public static class ProceduralAudio
         return clip;
     }
 
+    // A knock carried through the ship's structure: a cluster of inharmonic
+    // damped partials, like a fist on a bulkhead two corridors away.
+    public static AudioClip MakeMetalKnock()
+    {
+        int n = (int)(SampleRate * 0.7f);
+        float[] d = new float[n];
+        float[] partials = { 168f, 277f, 433f, 689f };
+        float[] gains = { 1f, 0.6f, 0.35f, 0.18f };
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / SampleRate;
+            float x = 0f;
+            for (int p = 0; p < partials.Length; p++)
+                x += Mathf.Sin(2f * Mathf.PI * partials[p] * t) * gains[p] * Mathf.Exp(-t * (6f + p * 4f));
+            float click = ((i % 37) / 37f - 0.5f) * Mathf.Exp(-t * 300f) * 0.5f;
+            d[i] = Saturate((x + click) * 0.9f);
+        }
+        var clip = AudioClip.Create("MetalKnock", n, 1, SampleRate, false);
+        clip.SetData(d, 0);
+        return clip;
+    }
+
+    // A failing lamp's electrical buzz: mains hum + harmonics + grit. Looping;
+    // FlickeringLight rides its volume on the bulb's level.
+    private static AudioClip buzzLoop;
+    public static AudioClip GetBuzzLoop()
+    {
+        if (buzzLoop != null) return buzzLoop;
+        int n = SampleRate;
+        float[] d = new float[n];
+        var rng = new System.Random(50);
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / SampleRate;
+            float x = Mathf.Sin(2f * Mathf.PI * 100f * t) * 0.5f
+                    + Mathf.Sin(2f * Mathf.PI * 200f * t) * 0.28f
+                    + Mathf.Sin(2f * Mathf.PI * 300f * t) * 0.12f;
+            x += Quantize(((float)rng.NextDouble() * 2f - 1f) * 0.1f, 7); // grit
+            d[i] = Saturate(x);
+        }
+        Normalize(d, 0.5f);
+        CrossfadeLoop(d, SampleRate / 20);
+        buzzLoop = AudioClip.Create("LampBuzz", n, 1, SampleRate, false);
+        buzzLoop.SetData(d, 0);
+        return buzzLoop;
+    }
+
     private static float Quantize(float x, int levels)
     {
         return Mathf.Round(x * levels) / levels;

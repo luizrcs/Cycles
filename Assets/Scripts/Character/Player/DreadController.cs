@@ -116,13 +116,20 @@ public class DreadController : MonoBehaviour
 
         UpdateHeart();
         UpdatePulse();
+
+        // The film damage is a dying effect in-game: it follows this danger.
+        FilmDamage.ReportDanger(intensity);
     }
 
     private float TargetIntensity()
     {
-        if (!follow.Engaged || detect.State == 3) return 0f;
+        if (detect.State == 3) return 0f;
         if (detect.State == 2) return 0f; // battle: the stab sounds own the mix
         if (detect.State == 1) return 1f;
+
+        // Before the double boards only the gaze rule speaks (it is active
+        // from the start — the recording is already running).
+        if (!follow.Engaged) return Mathf.Clamp01(ExternalDread);
 
         float distance = Vector3.Distance(doubleTransform.position, player.position);
         float proximity = Mathf.Clamp01(1f - (distance - 3f) / 20f);

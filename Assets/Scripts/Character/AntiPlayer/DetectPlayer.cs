@@ -80,7 +80,8 @@ public class DetectPlayer : MonoBehaviour
     // was right behind you the whole time.
     public void Ambush()
     {
-        if (State != 0 || !AntiPlayerFollow.Engaged) return;
+        if (State != 0) return;
+        AntiPlayerFollow.ForceEngage(); // cheating early just summons it early
 
         Vector3 back = -Player.transform.forward;
         back.y = 0f;
@@ -91,7 +92,12 @@ public class DetectPlayer : MonoBehaviour
                 ~0, QueryTriggerInteraction.Ignore))
             distance = Mathf.Max(0.9f, hit.distance - 0.6f);
 
-        transform.position = Player.transform.position + back * distance;
+        // Teleporting an interpolated rigidbody through the transform alone
+        // gets rubber-banded back to its old pose next frame — the chase then
+        // runs from across the map, through walls. Move the body too.
+        Vector3 spot = Player.transform.position + back * distance;
+        transform.position = spot;
+        body.position = spot;
 
         StartEncounter();
     }

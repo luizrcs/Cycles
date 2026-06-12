@@ -28,6 +28,7 @@ public class GazeDiscipline : MonoBehaviour
     private AntiPlayerFollow follow;
     private DreadController dread;
     private Transform player;
+    private PlayerMovement playerMovement;
     private CharacterController controller;
     private DeckGeneration deck;
 
@@ -35,10 +36,12 @@ public class GazeDiscipline : MonoBehaviour
     private float armedAt = -1f;
     private RawImage flash;
 
-    // The rule arms a few seconds AFTER the double boards: the entry door's
-    // creak is the warning, and a player idling at the spawn (which faces a
-    // wall) gets time to react instead of an inputless ambush.
-    private const float ArmDelay = 6f;
+    // Active from the START of the run (a few seconds after control unlocks):
+    // the recording IS the reason. Stare at the floor for the first two
+    // minutes and your future double would replay staring at the floor,
+    // never able to see you — the loop does not allow that trick. Breaking
+    // the rule before the double has boarded simply summons it early.
+    private const float ArmDelay = 4f;
 
     private const float Grace = 1.0f;
     private const float Ramp = 2.2f;
@@ -56,6 +59,7 @@ public class GazeDiscipline : MonoBehaviour
         follow = antiPlayerFollow;
         dread = dreadController;
         player = detectPlayer.Player.transform;
+        playerMovement = detectPlayer.Player.GetComponent<PlayerMovement>();
         controller = detectPlayer.Player.GetComponent<CharacterController>();
         deck = antiPlayerFollow.DeckGeneration;
     }
@@ -69,8 +73,9 @@ public class GazeDiscipline : MonoBehaviour
     {
         if (detect == null) return;
 
-        if (follow.Engaged && armedAt < 0f) armedAt = Time.time + ArmDelay;
-        bool active = follow.Engaged && detect.State == 0 && armedAt > 0f && Time.time >= armedAt;
+        if (armedAt < 0f && playerMovement != null && !playerMovement.LockMovement)
+            armedAt = Time.time + ArmDelay;
+        bool active = detect.State == 0 && armedAt > 0f && Time.time >= armedAt;
         float rate;
         if (!active) rate = -2f; // reset quickly before arrival / during encounters
         else if (WrongGaze()) rate = 1f;

@@ -136,6 +136,17 @@ public class AntiPlayerFollow : MonoBehaviour
         }
     }
 
+    // GazeDiscipline's early sentence: breaking the watch-the-corridor rule
+    // before the double has boarded summons it ahead of schedule — no door,
+    // no warning, it is simply already inside.
+    public void ForceEngage()
+    {
+        if (Engaged) return;
+        Engaged = true;
+        SetGhost(false);
+        entrancePhase = 2;
+    }
+
     private void WaitOutside()
     {
         bool due = route.Count > 0
@@ -145,6 +156,7 @@ public class AntiPlayerFollow : MonoBehaviour
         Engaged = true;
         SetGhost(false);
         transform.position = OutsideDoor;
+        body.position = OutsideDoor; // interpolated rigidbody: move the body too
         transform.rotation = Quaternion.Euler(0f, 90f, 0f); // facing into the ship
 
         GameObject enterDoor = DeckGeneration.GetComponent<EnterDoorContainer>().EnterDoor;
@@ -280,6 +292,7 @@ public class AntiPlayerFollow : MonoBehaviour
         }
 
         transform.position = chosen;
+        body.position = chosen; // interpolated rigidbody: move the body too
     }
 
     private float PeekTime()

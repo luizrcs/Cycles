@@ -43,6 +43,9 @@ public class ParadoxBleed : MonoBehaviour
             return;
         }
 
+        // The paradox is a death too: the reel degrades with it.
+        FilmDamage.ReportDanger(ramp * 0.9f);
+
         float t = Time.time;
         if (t < flickerUntil) return;
 

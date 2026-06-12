@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class DeckGeneration : MonoBehaviour
@@ -38,6 +40,19 @@ public class DeckGeneration : MonoBehaviour
 
     public float minX = -1f, minZ = -1f, maxX = float.MinValue, maxZ = float.MinValue;
 
+    // --- the dying ship: light-failure cascade -----------------------------
+    // In the last minute before the paradox the corridor lamps die in waves,
+    // farthest-from-the-exit first — the darkness closes in and chases the
+    // player toward the one door that matters. Rooms stay lit (items must
+    // stay findable to the end).
+    private readonly List<Light> corridorLamps = new();
+    private Vector3 exitDoorPosition;
+    private PlayerTimer playerTimer;
+    private bool cascadeStarted;
+
+    private const float CascadeStart = 180f; // T-60
+    private const float CascadeEnd = 225f;   // T-15: only the exit's glow is left
+
     void Start()
     {
         deckGenerator = new DeckGenerator();
@@ -67,6 +82,57 @@ public class DeckGeneration : MonoBehaviour
         }
 
         ApplyLightVariation();
+
+        playerTimer = FindFirstObjectByType<PlayerTimer>();
+        var exitTrigger = GetComponentInChildren<ExitDoorTrigger>();
+        if (exitTrigger != null) exitDoorPosition = exitTrigger.transform.position;
+    }
+
+    void Update()
+    {
+        if (cascadeStarted || playerTimer == null || playerTimer.Elapsed < CascadeStart) return;
+        cascadeStarted = true;
+        StartCoroutine(LightFailureCascade());
+    }
+
+    private IEnumerator LightFailureCascade()
+    {
+        // Farthest from the exit dies first: the lit region shrinks toward
+        // the way out.
+        corridorLamps.RemoveAll(l => l == null);
+        corridorLamps.Sort((a, b) =>
+            Vector3.Distance(b.transform.position, exitDoorPosition)
+                .CompareTo(Vector3.Distance(a.transform.position, exitDoorPosition)));
+
+        float window = CascadeEnd - CascadeStart;
+        for (int i = 0; i < corridorLamps.Count; i++)
+        {
+            float dueAt = CascadeStart + window * (i + 1) / (corridorLamps.Count + 1);
+            while (playerTimer.Elapsed < dueAt) yield return null;
+
+            Light lamp = corridorLamps[i];
+            if (lamp == null) continue;
+
+            var flicker = lamp.GetComponent<FlickeringLight>();
+            if (flicker != null) Destroy(flicker);
+            StartCoroutine(DeathSputter(lamp));
+        }
+    }
+
+    // A bulb does not just stop: a fast dirty sputter, then nothing.
+    private IEnumerator DeathSputter(Light lamp)
+    {
+        float baseIntensity = lamp.intensity;
+        float end = Time.time + Random.Range(0.25f, 0.6f);
+        while (Time.time < end)
+        {
+            if (lamp == null) yield break;
+            bool on = Random.value > 0.5f;
+            lamp.enabled = on;
+            lamp.intensity = baseIntensity * Random.Range(0.4f, 1f);
+            yield return new WaitForSeconds(Random.Range(0.02f, 0.07f));
+        }
+        if (lamp != null) KillLamp(lamp);
     }
 
     // An old ship's wiring is failing. Distribution (of ALL lamps, not of
@@ -91,6 +157,7 @@ public class DeckGeneration : MonoBehaviour
             {
                 double deadChance = sconce ? 0.5 : 0.2;
                 if (roll < deadChance) { KillLamp(light); continue; }
+                corridorLamps.Add(light); // survivor: eligible for the endgame cascade
                 roll = (roll - deadChance) / (1.0 - deadChance); // re-normalize the survivor roll
                 double defectShare = sconce ? 0.4 / 0.5 : 0.4 / 0.8;
 
@@ -137,6 +204,10 @@ public class DeckGeneration : MonoBehaviour
     private static void KillLamp(Light light)
     {
         light.enabled = false;
+
+        // A dead bulb makes no sound (cascade victims may carry a buzz source).
+        var buzz = light.GetComponent<AudioSource>();
+        if (buzz != null) buzz.Stop();
 
         if (light.transform.parent == null) return;
         foreach (Renderer renderer in light.transform.parent.GetComponentsInChildren<Renderer>())

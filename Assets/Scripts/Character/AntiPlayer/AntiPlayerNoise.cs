@@ -32,6 +32,17 @@ public class AntiPlayerNoise : MonoBehaviour
     private int phantomStepsLeft;
     private float nextPhantomStepAt;
 
+    // When walls block the direct line, a vague "echo" of the noise carries
+    // from partway down the path between you — diffraction you can't quite
+    // place, where the direct sound would be cleanly localizable.
+    private AudioSource echoSource;
+
+    // Structure-borne knocks from wherever it roams: audible across the deck,
+    // unmuffled (they travel through the hull, not the air).
+    private AudioSource knockSource;
+    private AudioClip knockClip;
+    private float nextKnockAt;
+
     void Start()
     {
         follow = GetComponent<AntiPlayerFollow>();
@@ -53,7 +64,34 @@ public class AntiPlayerNoise : MonoBehaviour
 
         MakeStepsWrong();
 
+        var echoGO = new GameObject("EchoVoice");
+        echoGO.transform.SetParent(transform, false);
+        echoSource = echoGO.AddComponent<AudioSource>();
+        echoSource.clip = source.clip;
+        echoSource.loop = true;
+        echoSource.playOnAwake = false;
+        echoSource.spatialBlend = 1f;
+        echoSource.dopplerLevel = 0f;
+        echoSource.rolloffMode = AudioRolloffMode.Linear;
+        echoSource.minDistance = 2f;
+        echoSource.maxDistance = 30f;
+        echoSource.volume = 0f;
+        var echoFilter = echoGO.AddComponent<AudioLowPassFilter>();
+        echoFilter.cutoffFrequency = 1100f;
+
+        var knockGO = new GameObject("HullKnocks");
+        knockGO.transform.SetParent(transform, false);
+        knockSource = knockGO.AddComponent<AudioSource>();
+        knockSource.playOnAwake = false;
+        knockSource.spatialBlend = 1f;
+        knockSource.dopplerLevel = 0f;
+        knockSource.rolloffMode = AudioRolloffMode.Linear;
+        knockSource.minDistance = 4f;
+        knockSource.maxDistance = 65f;
+        knockClip = ProceduralAudio.MakeMetalKnock();
+
         nextPhantomAt = Time.time + Random.Range(20f, 40f);
+        nextKnockAt = Time.time + Random.Range(15f, 30f);
     }
 
     // Same clips as the player's feet, but lower and roomier — the player
@@ -91,9 +129,15 @@ public class AntiPlayerNoise : MonoBehaviour
         if (!follow.Engaged)
         {
             if (source.isPlaying) source.Stop();
+            if (echoSource != null && echoSource.isPlaying) echoSource.Stop();
             return;
         }
         if (!source.isPlaying) source.Play();
+        if (echoSource != null && !echoSource.isPlaying)
+        {
+            echoSource.Play();
+            echoSource.timeSamples = source.timeSamples;
+        }
 
         float distance = Vector3.Distance(transform.position, player.position);
         float closeness = Mathf.Clamp01(1f - (distance - 2f) / 24f);
@@ -112,7 +156,38 @@ public class AntiPlayerNoise : MonoBehaviour
         source.pitch = 1f + (Mathf.PerlinNoise(Time.time * 2.3f, 0.7f) - 0.5f)
             * (0.12f + 0.5f * closeness);
 
+        UpdateEcho(battle, closeness);
         UpdatePhantomSteps(distance, battle);
+        UpdateKnocks(battle);
+    }
+
+    private void UpdateEcho(bool battle, float closeness)
+    {
+        if (echoSource == null) return;
+
+        Camera listener = Camera.main;
+        if (listener != null)
+            echoSource.transform.position =
+                Vector3.Lerp(transform.position, listener.transform.position, 0.5f);
+
+        // Speaks only when the direct line is blocked: the sound finds a way
+        // around, vague and muffled — you know it's near, not where.
+        float target = battle ? 0f : 0.5f * Mathf.Max(0.1f, closeness) * (1f - occlusion);
+        echoSource.volume = Mathf.Lerp(echoSource.volume, target, 4f * Time.deltaTime);
+        echoSource.pitch = source.pitch;
+    }
+
+    private void UpdateKnocks(bool battle)
+    {
+        if (knockSource == null || battle || detect == null || detect.State != 0) return;
+        if (follow.State != 2) return; // only while it roams, hunting
+
+        if (Time.time > nextKnockAt)
+        {
+            nextKnockAt = Time.time + Random.Range(18f, 42f);
+            knockSource.pitch = Random.Range(0.85f, 1.1f);
+            knockSource.PlayOneShot(knockClip, Random.Range(0.45f, 0.7f));
+        }
     }
 
     // Two thin rays to its head and feet: any clear one means sound travels

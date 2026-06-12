@@ -37,12 +37,31 @@ public class FlickeringLight : MonoBehaviour
 
     private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
 
+    private AudioSource buzz;
+
     void Start()
     {
         lamp = GetComponent<Light>();
         baseIntensity = lamp.intensity;
 
-        if (Mode == FailureMode.Flasher) nextBurst = Time.time + Random.Range(1f, 6f);
+        if (Mode == FailureMode.Flasher)
+        {
+            nextBurst = Time.time + Random.Range(1f, 6f);
+
+            // Electricity sells the failure better than light alone: a quiet
+            // mains buzz that follows the bulb's level and dies with it.
+            buzz = gameObject.AddComponent<AudioSource>();
+            buzz.clip = ProceduralAudio.GetBuzzLoop();
+            buzz.loop = true;
+            buzz.spatialBlend = 1f;
+            buzz.dopplerLevel = 0f;
+            buzz.rolloffMode = AudioRolloffMode.Linear;
+            buzz.minDistance = 0.7f;
+            buzz.maxDistance = 7f;
+            buzz.volume = 0f;
+            buzz.pitch = Random.Range(0.94f, 1.08f);
+            buzz.Play();
+        }
 
         emissiveRenderers = transform.parent != null
             ? transform.parent.GetComponentsInChildren<Renderer>()
@@ -111,6 +130,8 @@ public class FlickeringLight : MonoBehaviour
     {
         lamp.intensity = baseIntensity * l;
         lamp.enabled = l > 0.02f;
+
+        if (buzz != null) buzz.volume = 0.16f * l + (l > 0.02f ? 0.04f : 0f);
 
         for (int i = 0; i < emissiveRenderers.Length; i++)
         {

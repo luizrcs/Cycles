@@ -687,6 +687,85 @@ scene edits) active in EVERY scene including menus:
 - GazeDiscipline ArmDelay 6 s.
 - GlitchShell: _SliceScale 22, snow gate 0.92, fringe colors in frag.
 
+## Session 8 (2026-06-12, late night) — corrections round: taxonomy, gaze-from-start, poison mist, film placement
+
+### THE EFFECT TAXONOMY (USER — apply to every effect, current and future)
+1. **Dying effects** — anything that drives you toward death (double close/chasing, being
+   stared down, gaze penalty, paradox endgame): heartbeat, camera pulse, glitch flashes,
+   FILM DAMAGE (in-game), film roll. Scale with danger; absent at rest.
+2. **Random tension effects** — happen randomly, never harm, keep the mind heavy: positional
+   creaks, hull knocks, phantom steps, lamp flicker+buzz, film splices (menus), dust.
+3. **Constant environment style** — always on: grade (teal/green, darkness, grain, vignette),
+   worn surfaces, WORN TYPE everywhere, ship sway, mist visuals.
+4. **Location/state-triggered** — footprints, mist poisoning, occlusion muffling, door lingering.
+The game must always feel heavy ("psychological thriller — if we lose that we lose the game").
+
+### Corrections from user (all implemented + verified live)
+- **Gaze rule active from MINUTE ZERO** (not at 120 s): the recording is the reason — staring
+  at the floor for the first two minutes would make your future double replay staring at the
+  floor, unable to ever see you. Arms 4 s after control unlocks; suspended in rooms/doorways
+  and during encounters. Breaking it before the double boards **summons it early**
+  (`AntiPlayerFollow.ForceEngage` + Ambush — no door, no warning, it is simply inside).
+  DreadController now lets ExternalDread (gaze) drive the heartbeat pre-engage too.
+  Verified: floor-stare at t≈30 → ambush 3.2 s later → battle → (camera kept down) → second
+  ambush → GameOver(0). The rule kills exactly the AFK-cheat strategy.
+- **Mist is POISON now** (user: "I don't even see it"): new `Cycles/NauseaVision` fullscreen
+  quad on the camera (opaque-texture resample): GHOSTED double image that wanders (eyes that
+  can't converge), picture darkens (−28%), drains color, shifts sick-green — plus the drunk
+  tumble and lateral drift. Exposure chases a density-set ceiling (denser = higher AND faster,
+  ≈9 s to full at a pocket heart; ambient haze only nudges) and drains in ≈25 s. Registered in
+  AlwaysIncludedShaders (guid 7e4d2b9a1c8f4d27b6a3e5c0d9f2b481).
+- **Film damage placement** (user: it was inverted): damage layer (flutter, scratches, hairs,
+  dust, splices, film ROLL — the frame line slipping through the picture, new) is **constant
+  and heavy in menus** (intensity 0.85 — "the menus may be heavier than the game") and
+  **in-game exists only as a dying effect**: FilmDamage.ReportDanger() fed per-frame by
+  DreadController.intensity and ParadoxBleed's ramp; at rest the game carries only the
+  constant faded-print grade. Verified: intensity 0.00 at rest in-game, 1.00 during ambush.
+- **Menu fonts were still perfect**: texts that generated before FilmDamage existed (or that
+  never change) never fired TEXT_CHANGED — now every scene load force-regenerates all TMP
+  texts so the typewriter wear lands everywhere. Verified in MainMenu screenshot: NOVO JOGO /
+  Créditos visibly crooked/unevenly inked.
+- **Checklist aged** (explicit user mandate): panel skewed −1.7°, stained-paper overlay
+  (edge-darkened, rings and soaks), checkmarks replaced with generated pencil-scrawl strokes.
+- **CRITICAL physics bug found via testing**: teleporting the double through
+  `transform.position` alone gets rubber-banded by its interpolated rigidbody back to the old
+  pose — the ambush chase then ran from across the map THROUGH walls (observed on the exact
+  corner-to-player diagonal). Every teleport now also sets `Rigidbody.position`
+  (Ambush, entrance WaitOutside, Respawn). Verified: ambush materializes 2.9 m behind.
+
+### New random-tension systems (from the doc backlog, now real)
+- **Hull knocks**: structure-borne metal knock (synthesized inharmonic partials) from the
+  double's actual position every 18–42 s while it roams; range 65 m, deliberately NOT
+  occlusion-muffled (it travels through the ship's bones) — a directional dread beacon.
+- **Echo voice**: when walls block the direct line to the double, a lowpassed copy of its
+  noise loop plays from the midpoint — you know it's near, not where; the direct (bright)
+  sound only exists with a true open path. Plays sample-synced with the main loop.
+- **Lamp buzz**: every Flasher lamp carries a synthesized mains-hum loop (100/200/300 Hz +
+  grit) whose volume rides the bulb's level — silence when it sputters dark. Buzz dies with
+  the lamp (KillLamp stops it).
+- **Light-failure cascade** (doc #3): from elapsed 180 s to 225 s every surviving corridor
+  lamp dies (fast dirty sputter, then nothing), farthest-from-exit first — the lit region
+  shrinks toward the one door that matters. Rooms stay lit. Driven by PlayerTimer.Elapsed,
+  exit located via ExitDoorTrigger.
+
+### Verification (session 8)
+Zero compile/runtime errors. Live-verified: NauseaVision quad + shader on camera; gaze
+correctly judges open corridor vs wall per-generation (the spawn wall from last run is open
+corridor in another maze — by design); pre-engage ambush chain end-to-end twice to GameOver;
+ambush teleport lands 2.9 m behind; film intensity 0→1 with danger; checklist rotated+stained;
+EchoVoice/HullKnocks present; MainMenu type visibly worn. NOTE: overlay damage (flutter/
+scratches/roll) doesn't appear in camera-path screenshots (ScreenSpaceOverlay) but renders
+on the real screen — eyeball in person.
+
+### Session 8 knobs
+- GazeDiscipline: ArmDelay 4 s (from control unlock).
+- NauseaVision: ghost offset 0.018, darken 0.28, desat 0.55, green tint in shader;
+  exposure: floor 0.10, build 9 s, decay 25 s.
+- FilmDamage: menu intensity 0.85; roll every 7–18 s (menus) / 6–14 s when danger > 0.45
+  (game); per-element rates all scale with intensity.
+- Knocks 18–42 s / 65 m; echo 0.5×(1-occlusion); buzz 0.16×level, range 7 m.
+- Cascade: 180→225 s, farthest-from-exit first, rooms exempt.
+
 ## Working agreements
 
 - Never change gameplay feel, menu layout, transitions, narration timing, storyline presentation, or model choices.
