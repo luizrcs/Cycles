@@ -10,38 +10,27 @@ public class DoorTrigger : MonoBehaviour
     public GameObject Door;
     public bool Inner;
 
-    // Doors swing positive (inner) or negative (outer) around Y. The old code
-    // compared the raw quaternion Y component; the signed angle is what it meant.
-    private float DoorAngle => Mathf.DeltaAngle(0f, Door.transform.localEulerAngles.y);
+    private DoorState state;
+
+    private void Start()
+    {
+        // One DoorState per door, shared by its inner and outer triggers.
+        state = Door.GetComponent<DoorState>();
+        if (state == null)
+        {
+            state = Door.AddComponent<DoorState>();
+            state.DoorAnimator = DoorAnimator;
+            state.Door = Door.transform;
+        }
+    }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
-        {
-            bool isOpen = Mathf.Abs(DoorAngle) > 1f;
-            if (!isOpen)
-            {
-                DoorAnimator.Play((Inner ? "Inner" : "Outer") + "DoorOpen");
-                DoorOpen.Play();
-            }
-        }
+        if (other.CompareTag("Player")) state.Enter(Inner, DoorOpen);
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player"))
-        {
-            float angle = DoorAngle;
-            if (angle > 1f)
-            {
-                DoorAnimator.Play("InnerDoorClose");
-                DoorClose.Play();
-            }
-            else if (angle < -1f)
-            {
-                DoorAnimator.Play("OuterDoorClose");
-                DoorClose.Play();
-            }
-        }
+        if (other.CompareTag("Player")) state.Exit(DoorClose);
     }
 }

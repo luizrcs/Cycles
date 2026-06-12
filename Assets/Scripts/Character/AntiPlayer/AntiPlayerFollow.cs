@@ -43,6 +43,7 @@ public class AntiPlayerFollow : MonoBehaviour
     {
         playerPath = Player.GetComponent<PlayerPath>();
         body = GetComponent<Rigidbody>();
+        body.interpolation = RigidbodyInterpolation.Interpolate;
 
         SetGhost(true);
     }
@@ -70,12 +71,24 @@ public class AntiPlayerFollow : MonoBehaviour
 
     private void FollowPath()
     {
-        if (playerPath.Queue.Count == 0 || Time.time <= FollowDelay + PeekTime()) return;
+        // Drain every point whose recorded time is now 120 s old. The old code
+        // consumed at most one point per frame while recording ran at 100 Hz,
+        // so the replay slipped ever further behind the intended delay.
+        bool engaged = Engaged;
+        while (playerPath.Queue.Count > 0 && Time.time > FollowDelay + PeekTime())
+        {
+            CurrentTargetPosition = TargetPosition();
+            replayYaw = TargetRotationY();
+            engaged = true;
+        }
+
+        if (!engaged) return;
 
         if (!Engaged)
         {
             Engaged = true;
             SetGhost(false);
+            transform.position = CurrentTargetPosition;
         }
 
         if (Vector3.Distance(transform.position, Player.transform.position) < EncounterDistance)
@@ -84,21 +97,25 @@ public class AntiPlayerFollow : MonoBehaviour
             return;
         }
 
-        Vector3 targetPosition = TargetPosition();
-        if (targetPosition != CurrentTargetPosition)
+        // Glide toward the replay target instead of teleporting: same path,
+        // natural-looking motion.
+        Vector3 position = transform.position;
+        if (position != CurrentTargetPosition)
         {
-            CurrentTargetPosition = targetPosition;
-            body.MovePosition(CurrentTargetPosition);
+            float step = ReplaySpeed * Time.deltaTime;
+            body.MovePosition(Vector3.MoveTowards(position, CurrentTargetPosition, step));
 
             AntiPlayerAnimator.SetBool(IsRunning, true);
             StepSounds.PlayStepSound();
         }
         else AntiPlayerAnimator.SetBool(IsRunning, false);
 
-        Vector3 targetRotation = transform.rotation.eulerAngles;
-        targetRotation.y = TargetRotationY();
-        body.MoveRotation(Quaternion.Euler(targetRotation));
+        Quaternion target = Quaternion.Euler(0f, replayYaw, 0f);
+        body.MoveRotation(Quaternion.Slerp(transform.rotation, target, 12f * Time.deltaTime));
     }
+
+    private float replayYaw;
+    private const float ReplaySpeed = 8f;
 
     public void Respawn()
     {

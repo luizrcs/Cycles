@@ -163,6 +163,253 @@ Key fixes (each verified in play mode):
 - `End.png` storyboard sprite — possibly an outro storyboard never wired up.
 - Only one deck/level ("Adsum"); structure (PreGame briefing per level, narration clips array) suggests more levels/ships were envisioned.
 
+## Session 2 (2026-06-11, later) — post-FX really live + atmosphere & playability
+
+### Root cause of "I see no visual changes"
+The code-created `CyclesRenderer.asset` had **`postProcessData: {fileID: 0}`** — URP silently
+skips the entire post-processing pass when that reference is null. Every grade (ACES, bloom,
+vignette, grain) was configured but never executed. Fixed by assigning the package's
+`PostProcessData.asset`. Lesson: **when creating URP renderer data from code, always assign
+postProcessData; verify FX visually (vignette corners / grain), never trust settings alone.**
+
+### "Renders at low resolution" — editor-side, two causes (both fixed programmatically)
+1. Game view had **Low Resolution Aspect Ratios** enabled (renders at reduced DPI on scaled
+   Windows displays).
+2. Game view **zoom was 1.5×** (every pixel magnified 50%).
+Pipeline renderScale was always 1.0; builds were never affected.
+
+### Change log — user-directed
+- Post-processing actually rendering (ACES/bloom/vignette/grain/SSAO verified in screenshots).
+- AA: MSAA 4 all tiers + SMAA-high on every camera (round doorknobs/lamp domes).
+- Two-profile grading: `SampleSceneProfile` = Game scene horror grade (exp −0.2, contrast +15,
+  WB +12 warm, vignette .33, grain .25); `DefaultVolumeProfile` = neutral menu grade (exp 0,
+  WB off, vignette .22, grain .18) → menus readable, PreGame no longer dark.
+- MainMenu lantern 0.9 → **0.55** softer warm: storyboard paper readable, desk shadows kept.
+- PBR material pass (no model/texture changes): Wall smooth .38 (semi-gloss paint), floors .45
+  (varnish), Wall_Bar de-metalled (was metal .8!) → varnished hardwood, Golden_Bit → true brass
+  (metal 1, smooth .78), **Ceiling_Light dome + base were Unlit flat color → Lit + warm emission /
+  bronze** (big part of the old "PS3" look), Frame .45, Painting canvas .12.
+- Intentional light failures (`DeckGeneration.ApplyLightVariation`): per corridor lamp 15% dead
+  (light off + emission killed), 12% flickering (`FlickeringLight`: perlin waver + random
+  near-blackouts, drives light AND glass emission). Rooms exempt so items stay findable.
+  Verified: 33 dead / 9 flickering / 157 lit on one generation.
+- Ship sway (`CameraSway` on PlayerCamera): roll ±1.4° @9 s around the ship's length axis
+  (world Z — full roll looking down lengthwise corridors, becomes pitch looking across),
+  heave ±4.5 cm @6.5 s, walk bob 3.5 cm that fades in/out with real velocity. Implemented on a
+  runtime "CameraSwayRig" parent so it can't fight mouse-look or drift.
+- Night exterior: new `Assets/Materials/NightSky.mat` (procedural, near-black ground, dark blue
+  sky) as Game scene skybox + fog 0.02 — portholes show night, not void.
+- Door jitter fix: new `DoorState` (runtime-added to each door, shared by inner/outer triggers):
+  occupancy counting + 0.6 s rate limit; closes only when everyone left the trigger.
+- Smooth AntiPlayer: replay now drains all due path points per frame (old code consumed 1/frame
+  vs 100/s recording — the delay silently grew beyond 120 s) and **glides** to the target at
+  8 m/s with slerped yaw + rigidbody interpolation, instead of 100 Hz teleports.
+- Testing note: `Time.timeScale` persists across editor play sessions — it was still 4× from an
+  earlier test and made scene chains race; always reset.
+
+### Change log — Claude-suggested (acknowledged by user as my mandate to propose)
+- Two-profile grading split (menus neutral vs game horror) rather than one global grade.
+- Ghost mode + proximity encounter for the AntiPlayer (session 1) — fiction-preserving fix.
+- Rooms exempt from light failures (gameplay readability).
+- Walk bob tied to CharacterController velocity rather than a constant.
+- Emission sync on flickering lamp glass (light + material dim together).
+- Removing ProBuilder; retiring 2021 pipeline assets.
+
+### Horror ideas backlog (proposed, NOT implemented — discuss before building)
+Victorian/ship-horror references to draw from: *Ghost Ship*, *The Shining* corridors,
+*Amnesia*'s sanity system, *Layers of Fear* (ship DLC), 1912 Titanic interiors.
+- **Sanity/nausea system**: staying in darkness or seeing the double raises "dread" — drive
+  vignette/chromatic aberration/breathing SFX/heartbeat from it (Volume weight blending).
+- **Seasickness shader moments**: brief lens distortion + horizon roll amplification when the
+  ship lurches; tie to a rare "big wave" event with audio (creak swell + distant impact).
+- **Room events** (random per room entry): cold-breath fog, lamp dies as you enter, painting
+  changed when you look twice, door slams behind you, muffled footsteps overhead.
+- **The double leaves traces**: wet footprints appearing along its replay path; humming the
+  player's own walking rhythm from around corners.
+- **Radio/gramophone**: a cabin gramophone playing period music that distorts as the double
+  approaches (proximity-driven audio filter).
+- **Porthole scares**: occasionally a silhouette/wave crash visible through an outer porthole.
+- **Breathing/condensation**: cold rooms show faint breath puffs (particles) — sells the cold
+  North Atlantic.
+- **Dynamic lighting failure cascade**: as the 240 s timer nears its end, corridor lights fail
+  progressively — darkness closes in with the paradox.
+- **Footstep materiality**: distinct carpet vs bare wood footstep sets (clips already vary).
+
+## Session 3 (2026-06-11, evening) — "make the horror REAL" pass
+
+User verdict on session 2: changes too timid, atmosphere barely moved. Root lesson recorded:
+**the brief is a creative mandate, not a bug list — when the user describes an atmosphere,
+build the atmosphere, not the minimum diff.**
+
+### What was done (user-directed)
+- **Light failures made obvious and physical** (`FlickeringLight` rewritten): 20% dead + 20%
+  defective. Two modes modeled on real failing bulbs — *Dimmer* (deep brownouts to 10–30%
+  crawling over seconds, occasional full dropouts) and *Flasher* (steady, then violent 8–25 Hz
+  sputter bursts, a third ending in a dead second). Healthy bulbs vary ±15% intensity / warmth.
+  Lamp glass emission follows its light.
+- **Air** (`DustAndMist`, all runtime-procedural): deck-wide drifting mist quads + camera-local
+  dust motes; fog recolored from void-black to dark mist (0.045–0.055) density 0.022 so corridor
+  ends read as haze, not Minecraft void.
+- **Surface imperfection without new art** (`Assets/Textures/Generated/`): code-generated
+  tileable detail normal maps — plaster stipple+pores (walls/frames), wood grain+scratches
+  (floors, rails, cabinet, desk), fabric weave (carpet) — wired via URP Lit *detail maps*
+  (independent tiling; albedo untouched). This is THE technique for faking material detail on
+  off-the-shelf models with no authored maps.
+- **Period-camera grade**: Game = grain .55 Medium1, vignette .45, chromatic aberration .25,
+  exposure −0.35, saturation −15, bloom .85. Menus = grain .4, vignette .32, CA .15. (Old-TV
+  direction confirmed by user.)
+- **Paper is matte now**: storyboard pages + painting have specular highlights and environment
+  reflections OFF — that killed the storyboard glare (it was specular, not light intensity).
+- **Porthole night sky fixed**: the author's Glass shadergraph distorts scene-color, so from
+  inside it smeared dark wall pixels — exit-door portholes swapped to new clear `PortholeGlass`
+  (Lit transparent). New `NightSky.mat` = 6-sided skybox from a code-generated starfield
+  (900 stars + faint cloud bands). Verified visible from outside the hull.
+- **Fonts fixed**: both TMP assets (Special Elite = the typewriter font, Merriweather) had
+  static atlases without accented glyphs → relinked source TTFs and switched to **dynamic atlas
+  population** — "Bússola"/"estão" now render in the right font. Special Elite material got a
+  soft press-shadow underlay + slight ink erosion (_FaceDilate −0.06).
+- **Old-radio narration** (`RadioVoice` on the MainMenu narrator): 400 Hz–3.4 kHz band-pass +
+  light distortion.
+- **PreGame brightness**: key light 1.0→2.0 angled 25°/−15° for shape, flat warm ambient 0.3
+  (items were 3D models lit flat head-on; the dark "Item" Images are covers that fade to reveal).
+- **Editor capture traps documented**: PreGame auto-advances in ~12.5 s (slow `timeScale` to
+  catch it); `Time.timeScale` persists across play sessions; Game-view zoom/low-res made the
+  user think the game rendered at low resolution (fixed: zoom 1×, low-res aspect off).
+
+### Verification status
+- Storyboard: matte parchment, readable, desk shows wood grain+scratches. ✔ (screenshot)
+- PreGame: briefing with accents correct, oars/compass read well; nails dark→fill raised, not
+  yet re-screenshotted. (~✔)
+- Game corridor: dead-lamp pockets, vignette/grain/CA, surface detail visible. ✔ (screenshot)
+- Mist/dust: systems spawn; velocity-mode console error fixed after the beauty shot — re-verify
+  drift visually next session.
+- Flicker behaviors: coded to be obvious; **not yet observed over time in play — user should
+  judge rates/depths** (all constants at top of `FlickeringLight.cs`).
+
+### Tuning knobs (single values, safe to tweak by hand)
+- Dead/flicker rates: `DeckGeneration.ApplyLightVariation` (0.20 / 0.40 rolls).
+- Flicker character: constants in `FlickeringLight` (brownout depth/speed, burst rate/length).
+- Mist/dust density: `DustAndMist` (MistAlpha .05, DustAlpha .45, emission rates).
+- Grade strength: `SampleSceneProfile` (game) / `DefaultVolumeProfile` (menus).
+- Detail-map strength: each material's `_DetailNormalMapScale` (walls .55, floors .5, carpet .8).
+- Sway: `CameraSway` amplitudes/periods. Ship roll axis assumes length = world Z.
+
+### Next-step roadmap (detailed, in priority order)
+1. **Verify in real play** (user): flicker visibility, mist drift, door feel, sway strength,
+   radio voice, second-encounter pacing. Adjust knobs above.
+2. **Footstep materiality**: carpet vs wood step sounds (clips exist; pick by raycast surface).
+3. **Light-failure cascade ending**: as the 240 s timer approaches, corridor lights die in
+   waves radiating from the exit — darkness chases the player out (PlayerTimer → event →
+   DeckGeneration kills lamps progressively).
+4. **The double leaves traces**: faint wet footprint decals spawned along the replayed path
+   (a quad + generated footprint texture every ~2 m, fading over 30 s).
+5. **Gramophone room**: one random cabin gets a looping period song; low-pass + volume rise as
+   the AntiPlayer nears it (it hums along — reuse a narration clip pitched down?).
+6. **Sanity/nausea system** (user's idea, design needed): dread meter raised by darkness
+   proximity/double sightings → drives a Volume (CA, lens distortion, vignette pulse) +
+   heartbeat/breathing loops. Cap so it never blocks navigation.
+7. **Porthole scares**: rare silhouette pass / wave splash on outer portholes (sprite + audio).
+8. **Room events** on entry (roll per room): lamp dies as you enter, door slams behind,
+   cold-breath particles, painting swap when revisited.
+9. **Exterior believability**: faint moonlight shaft through portholes (thin spot light per
+   exit door), distant ocean-surface plane with scrolling normal map visible only through glass.
+10. **Audio pass**: ship groans positionally (creak sources at hull walls instead of 2D),
+    distant metal knocks from the double's direction while it roams.
+
+## Session 4 (2026-06-11, night) — "go hard": decay, air, water, type
+
+### USER IDEAS LEDGER (every one of these ships — 100% mandate)
+Implemented this session:
+1. ✅ Light distribution: ceiling 20% dead / 20% flasher / 20% dimmer / 40% "healthy";
+   sconces 50% dead then same 20/20; healthy lamps run a 0–100% luminosity lottery eased
+   bright (`pow(rand, 0.35)`). Rooms: bright again, defects allowed, never dead.
+2. ✅ Realistic failure behavior (was "always on"): dimmers crawl into deep 10–30% brownouts
+   over seconds and sometimes die; flashers sputter hard at 8–25 Hz in bursts.
+3. ✅ Light pools stay near their grid cell (ceiling range 7.5 = one cell; sconce 4.5) —
+   walking into a dead stretch is now actually dark.
+4. ✅ Rooms re-lit (the "dim = bad PS3 rendering" note was right — dim ≠ atmospheric there).
+5. ✅ Mist that you can SEE down a corridor + drift synced to the ship's roll period + fog
+   pockets with different density per area, some low/some head-height + floor haze.
+   (Root-caused why it was invisible before: DustAndMist raced DeckGeneration and spawned
+   everything at float.MinValue — now waits for valid deck bounds.)
+6. ✅ Ocean below the night sky (was "floating in space"): 400 m water plane, scrolling wave
+   normals, heave synced to roll; skybox sides got a real horizon fade, down face is sea haze.
+7. ✅ Surface age: everything was "clean perfect modern" — grime/stains/streaks baked into
+   wall paint (with blotchy sheen via albedo-alpha smoothness) and into aged COPIES of all
+   floor + carpet albedos (originals untouched).
+8. ✅ Texture stretching on bad-topology meshes (curved porthole walls): new
+   `Cycles/AgedWall` triplanar shader samples grime + detail normals in WORLD space —
+   flat, even coverage, UVs ignored. (Compiled first try; SSAO/shadow/depth passes included.)
+9. ✅ Font still too perfect: ink-grunge face texture on both TMP fonts (uneven coverage,
+   pinholes) + deeper erosion. Verified: "NOVO JOGO" reads hand-stamped.
+10. ✅ CA dialed down in menus (0.06) for readability, full character in game (0.22);
+    vignette eased both (game .36 / menu .28).
+
+Standing user principles (apply to all future work):
+- Go HEAVY on imperfection/atmosphere; stack constant + random + location-specific effects.
+- Reference: Alien Isolation tier, not Silent Hill/PS3 tier. "Latest and greatest."
+- The environment should "eat from you" — engulfing, unnerving, heavy.
+- Research real-world behavior (how lamps fail, how paper reflects, how old ships sound)
+  and real techniques from other games/forums before improvising.
+- All user ideas ship; Claude adds its own on top; both attributed in this file.
+
+### CLAUDE ADDITIONS (this session)
+- Albedo-alpha smoothness trick: dirt kills sheen per-pixel without extra textures.
+- Sconce vs ceiling failure rates differ → reads as a circuit dying, not random decay.
+- Fog pockets seeded deterministically from deck instance so layouts vary per run.
+- Sea mist band outside the hull; star-free haze band at the skybox horizon.
+- Cribbed the exact Unity 6 URP keyword set (incl. `_CLUSTER_LIGHT_LOOP` for Forward+)
+  from the package's Lit.shader before writing the custom shader — do this for any future
+  hand-written URP shader.
+
+### Known/accepted
+- Ocean is near-black (moonless North Atlantic) — moon glint pass listed below.
+- Fog pockets can be VERY thick when you stand inside one (user asked heavy; knob:
+  `DustAndMist` pocket alpha ×2.2).
+- "BoxCollider negative scale" warning remains (mirrored Room_B oars — harmless).
+
+### IN-DEPTH TODO (priority order, with implementation notes)
+1. **User playtest of session 4** — judge: flicker visibility over a full run, mist density
+   in normal corridors vs pockets, sconce mortality (50%) navigability, room brightness,
+   menu type legibility at distance, ocean through porthole at gameplay angle.
+2. **Moonlight**: one cold dim directional (intensity ~0.15, blue-gray) angled through the
+   exit-door portholes + a faint specular band on the ocean. Sells the water at night and
+   gives outer corridors a second light color. (Claude)
+3. **Light-failure cascade ending**: at T-60 s the paradox approaches — lamps die in waves
+   radiating outward from the exit door; by T-10 only sconce embers. Implement: PlayerTimer
+   broadcasts remaining time; DeckGeneration sorts lamps by distance-to-exit and schedules
+   `KillLamp` with FlickeringLight death-sputters. (Claude — user approved "darkness closes in" direction)
+4. **Footstep materiality**: raycast down, carpet vs wood step sets (clips exist in
+   Sounds/Character; split by feel). Also the DOUBLE's steps should sound subtly wrong —
+   slight pitch-down + reverb. (User: movement feel; Claude: wrong-steps detail)
+5. **Wet footprints along the double's replay path**: spawn fading decal quads (generated
+   footprint texture) every ~2 m on the path it has already walked. The player can TRACK
+   their pursuer — or realize it walked where they're standing. (Claude)
+6. **Positional ship audio**: move creaks from 2D random to 3D sources at random hull
+   positions; add distant metal knocks from the double's actual direction while roaming;
+   low groan swell synced to the big roll. (User: atmosphere; Claude: direction-coded knocks)
+7. **Sanity/nausea system** (USER — design before building): dread accumulates in darkness
+   and on double sightings; drives heartbeat/breath loops + a Volume with lens distortion /
+   CA pulse / desaturation; decays under working lamps. Hard cap so navigation stays possible.
+8. **Seasickness moments**: rare "big wave": roll amplitude ×3 for one period, props audio,
+   loose items rattle, lamps swing (animate light transforms ±5°). (Claude, extends user's
+   ship-roll idea)
+9. **Room events** (roll on entry): lamp pops as you enter; door slams behind; cold-breath
+   particles in one "cold room"; gramophone room (period song, distorts as the double
+   nears); painting swapped when you look twice. (User concept; Claude specifics)
+10. **Porthole scares**: outer portholes rarely show a passing silhouette/wave slap with a
+    thud. (Claude)
+11. **Hero-prop material pass**: beds, cabinets, globe, compass close-ups — same aged
+    detail treatment as architecture (they have real albedos; add detail normals + grime
+    bake). (User: "go through all assets")
+12. **Exit-door moment**: when EndGame triggers, kill ALL corridor lights for 2 s, then
+    only the exit's glow remains — a beacon. (Claude)
+13. **Sound design of failing lamps**: buzzing loop on flashers (volume follows level),
+    'tink' when a dimmer dies. Audio sells electricity better than visuals. (Claude)
+14. **Performance audit** after effect stacking: profile worst corridor; budget mist
+    overdraw (large soft quads are fill-rate hungry); consider halving pocket particle
+    counts on Medium/Low quality tiers. (Claude)
+
 ## Working agreements
 
 - Never change gameplay feel, menu layout, transitions, narration timing, storyline presentation, or model choices.

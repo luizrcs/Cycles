@@ -65,6 +65,85 @@ public class DeckGeneration : MonoBehaviour
             deckX = 0;
             deckZ += WallWidth * (EvenWallFactor + OddWallFactor) / 2;
         }
+
+        ApplyLightVariation();
+    }
+
+    // An old ship's wiring is failing. Distribution (of ALL lamps, not of
+    // survivors):
+    //   corridor ceiling lamps: 20% dead, 20% flasher, 20% dimmer, 40% "healthy"
+    //   wall sconces:           50% dead, 20% flasher, 20% dimmer, 10% "healthy"
+    //   room lamps:             never dead (collectibles must stay findable),
+    //                           but 20% flasher + 20% dimmer like everywhere.
+    // "Healthy" corridor bulbs still run a luminosity lottery between 0 and
+    // 100%, eased toward bright (pow 0.35), plus a warmth variance — no two
+    // bulbs burn alike.
+    private void ApplyLightVariation()
+    {
+        foreach (Light light in GetComponentsInChildren<Light>())
+        {
+            bool inRoom = IsInsideRoom(light.transform);
+            bool sconce = HasAncestorContaining(light.transform, "Wall_Lamp");
+
+            double roll = deckGenerator.Random.NextDouble();
+
+            if (!inRoom)
+            {
+                double deadChance = sconce ? 0.5 : 0.2;
+                if (roll < deadChance) { KillLamp(light); continue; }
+                roll = (roll - deadChance) / (1.0 - deadChance); // re-normalize the survivor roll
+                double defectShare = sconce ? 0.4 / 0.5 : 0.4 / 0.8;
+
+                if (roll < defectShare / 2) { AddDefect(light, FlickeringLight.FailureMode.Flasher); continue; }
+                if (roll < defectShare) { AddDefect(light, FlickeringLight.FailureMode.Dimmer); continue; }
+
+                // healthy: eased luminosity lottery, anywhere from near-dark to full
+                light.intensity *= Mathf.Pow(Random.value, 0.35f);
+            }
+            else
+            {
+                if (roll < 0.2) { AddDefect(light, FlickeringLight.FailureMode.Flasher); continue; }
+                if (roll < 0.4) { AddDefect(light, FlickeringLight.FailureMode.Dimmer); continue; }
+            }
+
+            float warmth = Random.Range(-0.06f, 0.04f);
+            light.color = new Color(
+                Mathf.Clamp01(light.color.r),
+                Mathf.Clamp01(light.color.g + warmth),
+                Mathf.Clamp01(light.color.b + warmth * 2f));
+        }
+    }
+
+    private static void AddDefect(Light light, FlickeringLight.FailureMode mode)
+    {
+        var flicker = light.gameObject.AddComponent<FlickeringLight>();
+        flicker.Mode = mode;
+    }
+
+    private static bool HasAncestorContaining(Transform t, string fragment)
+    {
+        for (Transform p = t; p != null; p = p.parent)
+            if (p.name.Contains(fragment)) return true;
+        return false;
+    }
+
+    private static bool IsInsideRoom(Transform t)
+    {
+        for (Transform p = t; p != null; p = p.parent)
+            if (p.name.StartsWith("Room_")) return true;
+        return false;
+    }
+
+    private static void KillLamp(Light light)
+    {
+        light.enabled = false;
+
+        if (light.transform.parent == null) return;
+        foreach (Renderer renderer in light.transform.parent.GetComponentsInChildren<Renderer>())
+        {
+            Material m = renderer.material;
+            if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", Color.black);
+        }
     }
 
     private int RandomIntExceptOne(int max, int exception)
