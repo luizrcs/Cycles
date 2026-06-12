@@ -32,19 +32,24 @@ public class DoorState : MonoBehaviour
         }
     }
 
-    public void Exit(AudioSource closeSound)
+    // The double leaves doors hanging open behind it (delay ~10 s) — a trace
+    // the player can read: "I didn't leave that open."
+    public void Exit(AudioSource closeSound, float closeDelay = 0f)
     {
         occupancy = Mathf.Max(0, occupancy - 1);
         if (occupancy == 0) wantClose = true;
         pendingCloseSound = closeSound;
+        closeNotBefore = Mathf.Max(closeNotBefore, Time.time + closeDelay);
     }
 
     private AudioSource pendingCloseSound;
+    private float closeNotBefore;
 
     void Update()
     {
         if (!wantClose || occupancy > 0) return;
         if (Time.time - lastChange <= MinInterval) return;
+        if (Time.time < closeNotBefore) return;
 
         float angle = DoorAngle;
         if (angle > 1f) DoorAnimator.Play("InnerDoorClose");

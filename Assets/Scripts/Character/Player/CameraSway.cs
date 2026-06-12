@@ -13,6 +13,11 @@ public class CameraSway : MonoBehaviour
     public float WalkBobAmplitude = 0.035f;
     public float WalkBobFrequency = 1.6f;  // step cycles per second
 
+    // Extra head rotation/offset written by other systems (MistNausea's
+    // drunk tumble) — composed here so nothing fights over the rig.
+    [HideInInspector] public Vector3 ExtraRotation;
+    [HideInInspector] public Vector3 ExtraOffset;
+
     private Transform rig;
     private Vector3 rigBasePosition;
     private CharacterController characterController;
@@ -53,7 +58,8 @@ public class CameraSway : MonoBehaviour
         if (bobWeight > 0f) bobPhase += Time.deltaTime * WalkBobFrequency * 2f * Mathf.PI;
         float bob = WalkBobAmplitude * bobWeight * Mathf.Sin(bobPhase);
 
-        rig.localRotation = Quaternion.Euler(pitchPart, 0f, rollPart);
-        rig.localPosition = rigBasePosition + new Vector3(0f, heave + bob, 0f);
+        rig.localRotation = Quaternion.Euler(
+            pitchPart + ExtraRotation.x, ExtraRotation.y, rollPart + ExtraRotation.z);
+        rig.localPosition = rigBasePosition + new Vector3(0f, heave + bob, 0f) + ExtraOffset;
     }
 }

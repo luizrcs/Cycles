@@ -10,7 +10,9 @@ public class PlayerTimer : MonoBehaviour
     // check made the paradox fire instantly on any second playthrough.
     private float elapsed;
 
-    private const float MaxTime = 240f;
+    // Read by ParadoxBleed to time the endgame glitch on the player's body.
+    public float Elapsed => elapsed;
+    public const float MaxTime = 240f;
 
     void Update()
     {

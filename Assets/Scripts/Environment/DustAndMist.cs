@@ -21,6 +21,29 @@ public class DustAndMist : MonoBehaviour
     private readonly List<ParticleSystem> drifting = new();
     private ParticleSystem.Particle[] buffer;
 
+    // Fog-pocket bookkeeping so MistNausea can ask how thick the air is.
+    private readonly List<Vector4> pockets = new(); // xyz = center, w = strength
+    private Bounds deckBounds;
+    private bool boundsKnown;
+
+    // 0 = clear air, 1 = the heart of the worst pocket. Ambient corridor mist
+    // contributes a low base everywhere inside the hull.
+    public float DensityAt(Vector3 position)
+    {
+        if (!boundsKnown || !deckBounds.Contains(new Vector3(position.x, deckBounds.center.y, position.z)))
+            return 0f;
+
+        float density = 0.15f;
+        foreach (Vector4 pocket in pockets)
+        {
+            float distance = Vector2.Distance(
+                new Vector2(position.x, position.z), new Vector2(pocket.x, pocket.z));
+            float falloff = Mathf.Clamp01(1f - distance / 7f);
+            density += pocket.w * falloff * falloff;
+        }
+        return Mathf.Clamp01(density);
+    }
+
     void Start()
     {
         StartCoroutine(BuildWhenDeckReady());
@@ -50,6 +73,9 @@ public class DustAndMist : MonoBehaviour
             float sx = deck.maxX - deck.minX + 10f;
             float sz = deck.maxZ - deck.minZ + 10f;
 
+            deckBounds = new Bounds(new Vector3(cx, 6f, cz), new Vector3(sx, 10f, sz));
+            boundsKnown = true;
+
             // body mist filling the deck
             drifting.Add(MakeMist("CorridorMist", mat, new Vector3(cx, 6f, cz),
                 new Vector3(sx, 3.5f, sz), rate: 30f, size: new Vector2(4f, 8f),
@@ -67,6 +93,7 @@ public class DustAndMist : MonoBehaviour
                 float px = Mathf.Lerp(deck.minX, deck.maxX, (float)rng.NextDouble());
                 float pz = Mathf.Lerp(deck.minZ, deck.maxZ, (float)rng.NextDouble());
                 float py = rng.NextDouble() < 0.5 ? 5.3f : 6.5f;  // some low, some at head height
+                pockets.Add(new Vector4(px, py, pz, 0.85f));
                 drifting.Add(MakeMist("FogPocket_" + i, mat, new Vector3(px, py, pz),
                     new Vector3(12f, 2.2f, 12f), rate: 26f, size: new Vector2(3f, 6f),
                     alpha: MistAlpha * 2.2f, gray: 0.75f));

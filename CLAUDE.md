@@ -410,6 +410,283 @@ Standing user principles (apply to all future work):
     overdraw (large soft quads are fill-rate hungry); consider halving pocket particle
     counts on Medium/Low quality tiers. (Claude)
 
+## Session 5 (2026-06-12) — full audit + "the double is the horror now" pass
+
+### Audit of sessions 1–4 claims (static analysis, all VERIFIED in code/assets)
+Everything promised on visuals/atmosphere is genuinely present and wired — no gaps found:
+- Pipeline: CyclesRenderer Forward+ (m_RenderingMode 2), postProcessData assigned, SSAO 1.5/0.35;
+  CyclesRP-High/Medium/Low GUIDs confirmed in QualitySettings tiers + Graphics default.
+- Materials: AgedWall shader → Wall.mat; Wall_Aged/Carpet_Aged/Floor_*_Aged albedos and
+  Detail_{Plaster,Wood,Fabric}_N detail normals all referenced by the right .mats; InkGrunge in
+  both TMP font assets; StarField/Horizon/SeaHaze → NightSky.mat; Waves_N → Ocean.mat.
+- Scene wiring: CameraSway + DustAndMist on the player camera (dust correctly camera-local),
+  OceanSurface in Game, RadioVoice in MainMenu; DoorState/FlickeringLight runtime-added (correct,
+  no scene refs expected). FlickeringLight failure distribution matches the documented 20/20/20 +
+  sconce 50% numbers (re-normalized survivor roll in ApplyLightVariation).
+- The "real problems" were all on the AI/character side, as suspected.
+
+### Bugs found & fixed (AI/movement)
+- **Aggro through walls**: `DetectPlayer.TouchesPlayer` was distance-only. When the replayed path
+  passed the player on the other side of a wall (player revisiting an area), the encounter fired
+  and `MoveTowardsPlayer` beelined THROUGH the wall (the AntiPlayer's capsule is a trigger — it
+  collides with nothing). Fix: every aggro path (sight, touch, stare) now requires `HasClearPath`,
+  a 0.45 m SphereCast (triggers ignored) that must reach the player. Since the player is locked
+  the moment the chase starts, the straight chase line is guaranteed wall-free.
+- **Sight**: single forward ray → 35° vision cone (30 m) + the same clear-path check. The roaming
+  double can now actually spot you off-axis, but never through geometry.
+- **Replay could skip/cut corners**: old code drained all due points into ONE target and glided
+  straight at it — after an encounter pause or any backlog, that line could cross walls. Now every
+  due point goes into an ordered `route` queue and the replay walks through ALL of them (base
+  5.5 m/s + up to +6 m/s catch-up scaling with backlog). It can lag the 120 s delay but can never
+  desync from the player's actual path geometry.
+- **Pop-in spawn** replaced by a real entrance (below).
+
+### New: the entrance (fiction-preserving)
+At first-point-due minus 2.4 s the double unghosts OUTSIDE the entry door (-2.4, 71.25), the door
+plays "InnerDoorOpen" (collider off, same mechanism as the player's own intro), it walks in at
+3.2 m/s to (1.4, 71.25), waits for the replay to come due, skips the recorded doorway points
+behind it, then replays. Door closes behind it (watchdog in LateUpdate also closes it if an
+encounter interrupts the entrance — collider must never stay disabled). It enters the ship the
+way you did, 120 s after you.
+
+### New: the double is WRONG (all runtime-added, player instance untouched)
+- `Cycles/GlitchShell` shader + `AntiPlayerGlitch`: each SkinnedMeshRenderer gets a shell renderer
+  on the SAME skeleton (fresh GO, bones/rootBone shared — follows animation for free). Shell =
+  fresnel rim torn into world-Y slices, displaced sideways in time-snapped bursts, per-slice
+  red/cyan chromatic ghosts, sparkle at high intensity. Everything quantizes on hashed ticks
+  (13/s) — snaps, never eases (Digital Circus "Abstraction" reference, kept human). Plus whole-
+  model displacement burst snaps in LateUpdate. Intensity: 0.12 floor when engaged, ~0.85 by
+  proximity (<25 m), 1.0 in chase/battle, + StareBoost. Shader registered in
+  AlwaysIncludedShaders (guid 3b1f8a2c9d4e4f06a7c2b5d8e1f4a627) so builds don't strip it.
+- `AntiPlayerNoise`: synthesized 4 s "broken transmission" loop (ProceduralAudio: hum + crackle +
+  hard chunk-repeat stutters + bit-crushed static breaths), positional on the double, linear
+  rolloff 2–26 m, louder/angrier when close or chasing, erratic pitch wobble. Audible through
+  walls by design — it's the keep-away cue.
+- `DreadController` (on player camera, added by DetectPlayer): arrhythmic heartbeat (synthesized
+  lub-dub; interval 1.15→0.42 s with intensity; 12% premature beats, 8% skipped), each beat kicks
+  the FOV through an under-damped spring (~0.4 s cycle, overshoots below rest — swell/collapse,
+  SOMA-style), plus a runtime global Volume (lens distortion −0.32 pulsing, CA 0.9, vignette 0.42)
+  whose weight throbs on the beat. Idles at zero when not engaged.
+- **Stare rule**: holding the double within 14° of screen center, <35 m, unobstructed (linecast,
+  triggers ignored) accumulates ~3 s → `DetectPlayer.ProvokeFromStare()` — it notices and charges,
+  even mid-roam, even if it never saw you. Glances decay at 2×. Staring also ramps StareBoost
+  (shell glitch worsens as you keep looking — teaches "don't look at it").
+
+### Verification (play mode via Unity MCP, 3 full runs at 3–8× timescale)
+- Zero compile errors; zero runtime errors/NREs from any new system across all runs (console
+  clean except the two known pre-existing warnings: Room_B negative-scale BoxCollider, shadow
+  atlas pressure).
+- Components verified spawning: glitch shell renderer cloned (1 per SMR), noise + dread + global
+  DreadVolume all present at scene start; double ghost-parked at (-20, -10).
+- Full chain verified by state inspection ×3: entrance (engaged, phase transitions) → touch
+  encounter WITH clear LoS (also with the player teleported 30 m away — replay walked the
+  corridor, no wall cuts) → battle → respawn far corner → roam → 240 s paradox GameOver
+  (Reason 1). GameLogic flow unchanged.
+- NOT yet eyeballed in person: the entrance walk-in on screen, shell shader look, heartbeat feel
+  (MCP latency at high timescale ate the 2-second observation windows). **User playtest is the
+  next step** — all tuning knobs below.
+
+### Tuning knobs (session 5)
+- Glitch look: `GlitchShell.shader` properties (_SliceScale 14, _TickRate 13, _Inflate) and
+  `AntiPlayerGlitch.TargetIntensity` (0.12 floor / 0.85 proximity ceiling / burst rates in
+  LateUpdate).
+- Noise: `AntiPlayerNoise` (volumes 0.55 idle / 0.95 aggro, rolloff 2–26 m); loop content in
+  `ProceduralAudio.MakeGlitchLoop`.
+- Heartbeat/pulse: `DreadController` (interval lerp, arrhythmia rolls 12%/8%, spring 230/7, FOV
+  kick 28–50, volume overrides).
+- Stare: StareLimit 3 s, StareMaxAngle 14°, StareMaxDistance 35 m, decay 2×.
+- Replay pace: AntiPlayerFollow BaseReplaySpeed 5.5, catch-up 0.01/point capped +6.
+- Entrance: EntranceLead 2.4 s, EntranceSpeed 3.2.
+
+### Session-5 testing traps (learned)
+- Editor-code `Time.timeScale` persists across play sessions (re-confirmed; reset to 1 at end).
+- MCP execute_code round-trips cost 1–2 s real each — at 6–8× timescale that's 10+ scene-seconds
+  per call; pause-step or slow-mo (timeScale 0.3) around narrow event windows instead.
+- Batch-mode compile checks are impossible while the editor has the project open (lockfile).
+
+## Session 6 (2026-06-12, later) — playtest feedback round 1: "the loop notices"
+
+User playtested session 5. Verdicts and the resulting work (all USER ideas unless marked):
+
+### Fixed from playtest
+- **Corner-peek blindness**: stare/sight used a single line (or thick sphere) to ONE body point —
+  any partial occlusion killed detection entirely; only a fully exposed player was seen/stareable.
+  Bodies are 3D. Now both directions test 5 body points (head/chest/legs/both shoulders, lateral
+  offsets perpendicular to the sight line): ANY clear point = visible. Strafe-peeking around a
+  corner with half your body out now triggers the stare buildup AND lets the double see you.
+  Chase gained SphereCast slide-steering (projects movement along hit normals) so sliver-LoS
+  encounters steer around corners instead of clipping them.
+- **Battle mix**: heartbeat/pulse/volume/glitch-loop all kept blasting under the blackout and
+  drowned the author's punch/stab sounds. Now DetectPlayer.State==2 ducks everything fast
+  (DreadController target 0 + downSpeed 1.8, noise lerp 8×). Surviving sets afterShock=1
+  (decays ~7 s — heart still hammering as you wake, which the user liked and asked to keep) plus
+  a PERMANENT 0.12 heartbeat floor for the rest of the run (Claude idea, user-approved).
+- Stare growth confirmed working as intended once visibility was fixed: outline → full
+  abstraction over the 3 s, then ProvokeFromStare.
+
+### New: GazeDiscipline — you must watch the corridor (USER design)
+The stare/instant-sight economy only works if the player can't cheat by staring at the floor.
+`GazeDiscipline` (runtime-added to the camera):
+- WRONG gaze = camera pitch beyond ±38° (floor/ceiling) OR the LOOK direction (flattened, the
+  direction you look — NOT the corridor cell you stand in, so peeking down a side corridor from
+  a corner is explicitly valid) hits geometry within 3.2 m (kept under half corridor width so
+  looking across a corridor from its center is always legal). Suspended inside rooms/doorways
+  (deck matrix cell != 1) where staring at furniture is the point. Triggers never block the ray.
+- Walking backwards accumulates at 0.45× (generous — watching the hallway behind you is honest).
+- 1.0 s grace, 2.2 s ramp; decay at 0.5×/s — looking away costs more than it bought (user spec).
+- Ramp drives: glitch slice flashes over the view (runtime overlay canvas, point-sampled
+  red/cyan slice texture, time-snapped flicker like the shader) + heartbeat/pulse via
+  `DreadController.ExternalDread`.
+- At full penalty: `DetectPlayer.Ambush()` — the double is simply THERE, right behind you
+  (clamped to the wall behind), encounter starts. First time = survivable, so the rule
+  teaches itself. Inactive until the double is aboard (first 120 s = free practice) and during
+  encounters.
+- Design note (user): the double does NOT need scripted random-look-around behavior — gaze
+  discipline forces the player camera (and therefore the future double) to face corridors
+  naturally. The replay does the rest.
+- Verified in play mode: corridor gaze = valid, wall gaze = wrong, floor gaze = wrong, pockets
+  density field correct.
+
+### New: MistNausea — the air fights you (USER design)
+`DustAndMist.DensityAt(pos)` (0.15 ambient inside hull + quadratic falloff around the 9 fog
+pockets) feeds `MistNausea` on the camera: exposure builds with density × time (≈13 s to full
+inside a pocket), decays slower (≈22 s), drives slow layered-sine drunk tumble (roll ≤5.5°,
+yaw ≤2.6°, pitch ≤1.3°) composed through `CameraSway.ExtraRotation` so nothing fights the rig.
+Distinct from the heartbeat anxiety: that is the double, this is the air. Annoying enough to
+push you out of pockets, never unplayable.
+
+### New: the four approved immersion ideas (Claude ideas, user-mandated)
+1. **Wrong footsteps**: the double's steps pitched 0.82 + Hallway reverb (your steps, but not
+   quite). Plus phantom step bursts: every 16–38 s within 32 m, 3–5 footsteps at pitch ~0.7
+   play from its position even while it stands still (separate child source, Cave reverb).
+2. **ParadoxBleed**: last 60 s, the PLAYER's own body flickers with GlitchShell shells —
+   brief at first, longer/more frequent toward the paradox (you are becoming the next double).
+   PlayerTimer now exposes `Elapsed` + public `MaxTime` for this.
+3. **Aftershock + permanent floor** (see battle mix above).
+4. **The trail**: `FootprintTrail` — wet dark glossy footprint quads (code-generated sole
+   texture, colliderless, smoothness .92) every 1.7 m wherever the double walks, alternating
+   feet, fading over 30 s, capped at 44. Doors it passes linger open ~10 s (`DoorState` close
+   delay; the player's own doors still shut promptly) — "I didn't leave that open."
+
+### Teaching the player (current state + proposals)
+Already self-teaching: every death-rule's first offense is the survivable first encounter; gaze
+ramp gives 2+ s of escalating flashes/heartbeat before the ambush; stare ramps the double's
+glitch visibly; nausea builds gradually. Proposals (NOT implemented — discuss):
+- The intro voice line set already includes unused `WhatSound` — could gate a one-time PT
+  whisper ("não olhe para ele...") on the first stare provocation, recorded later.
+- First gaze offense could flash a 1-frame silhouette of the double in the flashes (the overlay
+  already speaks the right visual language).
+- PreGame briefing could add one line of period-styled text: "Não pare. Não encare. Não olhe
+  para trás." — teaches all three rules diegetically before the first run.
+
+### Session 6 tuning knobs
+- GazeDiscipline: Grace 1.0 / Ramp 2.2 / DecayRate 0.5 / BackwardsRate 0.45 / PitchLimit 38° /
+  OpenDistance 3.2.
+- MistNausea: BuildSeconds 13 / DecaySeconds 22 / sine amplitudes in Update.
+- DensityAt: ambient 0.15, pocket strength 0.85, falloff radius 7.
+- Aftershock: decay 0.14/s, contribution 0.75; floor 0.12.
+- Phantom steps: interval 16–38 s, range 32 m, pitch 0.62–0.74.
+- Footprints: Stride 1.7 / Life 30 / MaxPrints 44 / BaseAlpha 0.75; door linger 10 s.
+- ParadoxBleed: StartAt 180 s, flicker length/frequency scales in Update.
+
+### Verification (session 6)
+Zero compile errors; zero runtime errors in play mode; all new components verified attached
+(GazeDiscipline/MistNausea/DreadController on camera, ParadoxBleed+1 shell on player,
+FootprintTrail/PhantomSteps on the double, GlitchFlash overlay present, step pitch 0.82+reverb
+confirmed, pocket density 1.00 center / 0.22 at 5 m / 0.15 ambient). Gaze classification
+verified by direct invocation. NOT yet eyeballed: flashes on screen, footprint look, nausea
+feel, phantom-step timing — **user playtest round 2**.
+
+## Session 7 (2026-06-12, night) — playtest round 2: "I don't see the effects" → proof, fixes, film
+
+### First: WHY the user saw nothing (important for every future session)
+Live scripted verification (force-engaging the double via reflection) proved in the editor that
+gaze→flashes→ambush→battle, stare-3s→provoke→GameOver(0), aftershock, the permanent 0.12 heart
+floor, respawn/roam ALL fire. **If a playtest shows none of it, the session almost certainly ran
+a stale standalone build — editor play needs no rebuild, but a built .exe must be re-built.**
+Also remember most effects are gated: nothing at all happens before the double boards at 120 s.
+
+### Real defects the playtest still caught (now fixed + re-verified live)
+- **Footprints never spawned**: the floors have NO colliders (the player's Y is forced to 4.75,
+  never grounded by physics) so the spawn raycast hit nothing — and the visible floor surface is
+  at world y≈0 (model roots stand there; the 4.75 "walk Y" is just the controller pivot).
+  Raycast now falls back to y=0. Verified: 31 prints at y=0.02 along a roam path.
+- **Mist nausea imperceptible**: built too slowly (ambient mist diluted it) and its ±1° output
+  hid under the ship's own ±1.4° sway. Now only density above the ambient floor (0.12) builds
+  poison, full effect ≈9 s at a pocket center, decay ≈25 s, amplitudes roll ±7.5°/yaw ±3.2°/
+  pitch ±1.8° + lateral head drift ±6 cm (new `CameraSway.ExtraOffset`). Density AND time now
+  both visibly matter (USER spec).
+- **Gaze rule armed instantly at 120 s**: a player idling at spawn (which faces a wall 2.4 m
+  east!) was ambushed with zero input — discovered live when the forced engage triggered a
+  legitimate ambush on its own. Now arms 6 s AFTER the double boards (the entry-door creak is
+  the warning).
+- **Glitch read as "GPU failure"** (USER: "TV going wrong, not a computer"): GlitchShell
+  rewritten in analog language — pale desaturated phosphor static + per-pixel snow grain
+  (re-rolled per tick), tears whose offset varies ALONG the slice (ripped, not slab), faint
+  warm/cool fringe at 0.4 saturation instead of red/cyan, band flutter, rare vertical-hold
+  slips (whole picture pops down a frame). GazeDiscipline's flash texture matched to the same
+  palette.
+- **Sound "everywhere and nowhere"** (USER): two fixes.
+  (a) Occlusion: everything the double emits (noise loop, its footsteps, phantom steps) runs
+  through AudioLowPassFilters driven by two linecasts ear→head/feet — walls drop cutoff to
+  650 Hz and volume to 35%, smoothed at 3.5/s so an opening door audibly "lets the sound in".
+  Verified live: cutoff 650 with the double across the deck. If you hear it bright and loud,
+  the path to it is OPEN — sound direction is now trustworthy information.
+  (b) Positional creaks: RandomSoundsController is 3D and teleports to a random hull point
+  (7–22 m, varied height) before each creak. TimeParadox stays 2D (it's inside your head).
+
+### New: FilmDamage — the whole game is a badly preserved reel (USER mandate)
+Self-bootstrapping persistent object (`RuntimeInitializeOnLoadMethod`, DontDestroyOnLoad, no
+scene edits) active in EVERY scene including menus:
+- Luminance flutter (perlin ±4.5% black overlay) + occasional deeper dips.
+- Vertical emulsion scratches WITH dark shaded edges and gaps (defects have shading, never
+  clean outlines — USER), trembling sideways, born/dying randomly; dark hairs in the gate;
+  dust specks flickering frame-to-frame; rare splice jumps (2 white frames then a dark beat,
+  every 18–55 s).
+- Faded-print grade volume (priority 90, weight .65): lifted blacks, teal-rotted shadows,
+  warm highlights — on top of each scene's own grade.
+- **Typewriter wear on ALL TMP text everywhere** via TMPro TEXT_CHANGED hook: every glyph
+  deterministically offset (±3.5%/5% of font size), tilted ±1.3°, unevenly inked (alpha
+  195–255) — the type itself sits wrong; not noise composited over perfect glyphs (USER).
+  Covers HUD, menus, narration, GameOver. The overlay canvas sorts at 90, above the HUD, so
+  the checklist inherits scratches/flutter too.
+- Verified live: FilmDamage/FilmGrade/FilmOverlay spawn, checklist type visibly irregular in
+  screenshot, zero console errors.
+
+### USER IDEAS LEDGER — session 7 additions (all shipped unless noted)
+1. ✅ Glitch language = dying analog TV, not GPU artifact (rewrite above).
+2. ✅ Sound must be directional/propagation-honest; bounce/occlude so corridors shape it.
+3. ✅ Old-film treatment everywhere, every scene: not "modern camera filming an old place"
+   but "old, poorly preserved camera in an old place".
+4. ✅ Fonts/UI must be physically defective (massive, cut-off, shaded defects) — not noise
+   over perfect rendering; includes the items checklist (type wear + overlay damage; deeper
+   per-item paper aging still possible, see backlog).
+5. ✅ Mist nausea must scale with density AND time spent (strengthened, see fixes).
+6. ✅ Compounding randomness everywhere — "the game should feel heavy ALL the time;
+   psychological thriller; if we lose that we lose the game" (standing principle, now also
+   served by film flutter/scratch/splice randomness + positional creaks + phantom steps).
+7. Standing process rule: ALWAYS record every user idea in this file, compiled from
+   spread-out remarks; user ideas all ship; Claude keeps suggesting its own on top.
+
+### Backlog (new/remaining, in rough priority)
+- Checklist paper itself: stained/torn paper texture + checkmarks as rough pencil scrawl.
+- Gate weave (whole-frame jitter) needs a fullscreen blit feature — overlay can't shift the
+  rendered image; consider URP FullScreenPassRendererFeature with a tiny UV-offset shader.
+- Audio: true per-corridor early reflections are out of scope, but a second "echo" voice for
+  the noise loop (delayed, quieter, from the nearest corridor opening) would sell bounce.
+- Previous backlogs (moonlight, light-failure cascade ending, gramophone, porthole scares,
+  room events, hero-prop pass, exit-door blackout moment, lamp buzz SFX, performance audit)
+  still stand.
+
+### Session 7 knobs
+- FilmDamage: flutter 0.045, dip 0.10, splice every 18–55 s, scratch birth p=0.004/frame/slot,
+  hair p=0.0012, dust p=0.06/speck, grade weight 0.65, wear offsets in ApplyWear.
+- Occlusion: cutoff 650→22000, floor volume 35%, smooth 3.5/s.
+- Creaks: 7–22 m radius, every 5 s.
+- Nausea: AmbientFloor 0.12, Build 9 s, Decay 25 s, amplitudes in Update.
+- GazeDiscipline ArmDelay 6 s.
+- GlitchShell: _SliceScale 22, snow gate 0.92, fringe colors in frag.
+
 ## Working agreements
 
 - Never change gameplay feel, menu layout, transitions, narration timing, storyline presentation, or model choices.

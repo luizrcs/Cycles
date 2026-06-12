@@ -31,6 +31,11 @@ public class DoorTrigger : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player")) state.Exit(DoorClose);
+        if (!other.CompareTag("Player")) return;
+
+        // Both bodies are tagged Player so doors open for the double too —
+        // but the double leaves them hanging open behind it.
+        bool isDouble = other.GetComponent<PlayerMovement>() == null;
+        state.Exit(DoorClose, isDouble ? 10f : 0f);
     }
 }
