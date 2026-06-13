@@ -134,6 +134,131 @@ public static class ProceduralAudio
         return buzzLoop;
     }
 
+    // The hull under a big wave: a deep stress groan that swells, cracks into
+    // metallic complaint partway, and dies down. One-shot (~7 s).
+    public static AudioClip MakeGroanSwell()
+    {
+        int n = SampleRate * 7;
+        float[] d = new float[n];
+        var rng = new System.Random(417);
+        float phase = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / SampleRate;
+            float k = t / 7f;
+            // swell envelope: slow rise, hold, slow fall
+            float env = Mathf.Sin(Mathf.PI * Mathf.Pow(k, 0.8f));
+
+            float freq = 26f + 16f * Mathf.Sin(Mathf.PI * k) + 3f * Mathf.Sin(t * 1.7f);
+            phase += 2f * Mathf.PI * freq / SampleRate;
+            float body = Mathf.Sin(phase) * 0.7f + Mathf.Sin(phase * 2.02f) * 0.25f;
+
+            // metal stress voices join near the peak
+            float stress = (Mathf.Sin(2f * Mathf.PI * 93f * t + Mathf.Sin(t * 3.1f) * 4f) * 0.5f
+                          + Mathf.Sin(2f * Mathf.PI * 131f * t) * 0.3f)
+                          * Mathf.Clamp01(env - 0.45f) * 1.4f;
+
+            float grit = ((float)rng.NextDouble() * 2f - 1f) * 0.06f * env;
+            d[i] = Saturate((body * env + stress + grit) * 1.1f);
+        }
+        Normalize(d, 0.85f);
+        var clip = AudioClip.Create("GroanSwell", n, 1, SampleRate, false);
+        clip.SetData(d, 0);
+        return clip;
+    }
+
+    // A wave breaking against the hull at a porthole: a deep boom under a
+    // splash of noise that hisses out. One-shot (~1.8 s).
+    public static AudioClip MakeWaveSlap()
+    {
+        int n = (int)(SampleRate * 1.8f);
+        float[] d = new float[n];
+        var rng = new System.Random(86);
+        float previous = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / SampleRate;
+            float boom = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(52f, 30f, Mathf.Clamp01(t * 4f)) * t)
+                       * Mathf.Exp(-t * 5.5f);
+
+            // splash: brightened noise (first difference) with a fast attack
+            float white = (float)rng.NextDouble() * 2f - 1f;
+            float bright = white - previous * 0.6f;
+            previous = white;
+            float splash = bright * Mathf.Clamp01(t * 30f) * Mathf.Exp(-t * 3.2f) * 0.5f;
+
+            d[i] = Saturate(boom * 1.2f + splash);
+        }
+        Normalize(d, 0.8f);
+        var clip = AudioClip.Create("WaveSlap", n, 1, SampleRate, false);
+        clip.SetData(d, 0);
+        return clip;
+    }
+
+    // The gramophone: a slow minor waltz in a music-box timbre, with the
+    // surface crackle of a worn shellac record baked in. Loops (~17 s);
+    // wow/flutter is applied live by the Gramophone component via pitch.
+    public static AudioClip MakeWaltz()
+    {
+        const float beat = 60f / 84f; // 84 bpm, 3/4
+        int bars = 8;
+        int n = (int)(SampleRate * beat * 3f * bars);
+        float[] d = new float[n];
+
+        // (bar, beat, frequency, beats held, gain). Melody an octave up —
+        // music boxes sing high; bass anchors the oom of each bar.
+        float A2 = 110f, E2 = 82.4f, F2 = 87.3f, D3 = 146.8f;
+        float E4 = 329.6f, F4 = 349.2f, GS4 = 415.3f, A4 = 440f, B4 = 493.9f;
+        float C5 = 523.3f, D5 = 587.3f, E5 = 659.3f;
+        var notes = new (int bar, float beatIn, float freq, float held, float gain)[]
+        {
+            (0,0,A2,3,0.5f), (1,0,A2,3,0.5f), (2,0,D3,3,0.5f), (3,0,E2,3,0.5f),
+            (4,0,A2,3,0.5f), (5,0,F2,3,0.5f), (6,0,E2,3,0.5f), (7,0,A2,3,0.5f),
+            (0,0,E5*2,2,1f), (0,2,C5*2,1,0.85f),
+            (1,0,B4*2,2,1f), (1,2,E4*2,1,0.8f),
+            (2,0,F4*2,1,0.9f), (2,1,A4*2,1,0.9f), (2,2,D5*2,1,0.95f),
+            (3,0,B4*2,3,1f),
+            (4,0,C5*2,2,1f), (4,2,E5*2,1,0.9f),
+            (5,0,A4*2,2,0.95f), (5,2,C5*2,1,0.85f),
+            (6,0,B4*2,1,0.9f), (6,1,GS4*2,1,0.85f), (6,2,B4*2,1,0.9f),
+            (7,0,A4*2,3,1f),
+        };
+
+        foreach (var note in notes)
+        {
+            int start = (int)(SampleRate * beat * (note.bar * 3 + note.beatIn));
+            int length = (int)(SampleRate * beat * note.held);
+            bool isBass = note.freq < 200f;
+            for (int i = 0; i < length && start + i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float decay = Mathf.Exp(-t * (isBass ? 5f : 3.2f));
+                float x = Mathf.Sin(2f * Mathf.PI * note.freq * t)
+                        + Mathf.Sin(2f * Mathf.PI * note.freq * 2.003f * t) * 0.35f
+                        + Mathf.Sin(2f * Mathf.PI * note.freq * 4.01f * t) * 0.1f;
+                d[start + i] += x * decay * note.gain * (isBass ? 0.16f : 0.12f);
+            }
+        }
+
+        // shellac surface: steady soft hiss + sparse crackle, louder than hi-fi
+        var rng = new System.Random(1921);
+        for (int i = 0; i < n; i++)
+            d[i] += ((float)rng.NextDouble() * 2f - 1f) * 0.012f;
+        for (int c = 0; c < 260; c++)
+        {
+            int start = rng.Next(n - 120);
+            float amp = ((float)rng.NextDouble() * 2f - 1f) * 0.16f;
+            for (int i = 0; i < 100; i++)
+                d[start + i] += amp * Mathf.Exp(-i / 14f) * ((float)rng.NextDouble() * 2f - 1f);
+        }
+
+        Normalize(d, 0.7f);
+        CrossfadeLoop(d, SampleRate / 8);
+        var clip = AudioClip.Create("GramophoneWaltz", n, 1, SampleRate, false);
+        clip.SetData(d, 0);
+        return clip;
+    }
+
     private static float Quantize(float x, int levels)
     {
         return Mathf.Round(x * levels) / levels;

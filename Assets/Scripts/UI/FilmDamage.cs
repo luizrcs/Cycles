@@ -327,7 +327,7 @@ public class FilmDamage : MonoBehaviour
     private IEnumerator WearExistingTexts()
     {
         yield return null; // let the scene's canvases build first
-        foreach (var text in FindObjectsByType<TMP_Text>(FindObjectsSortMode.None))
+        foreach (var text in FindObjectsByType<TMP_Text>())
             text.ForceMeshUpdate(true, true); // regenerates → wear hook fires
     }
 
@@ -396,7 +396,7 @@ public class FilmDamage : MonoBehaviour
     {
         yield return null;
 
-        var objectives = FindFirstObjectByType<ObjectivesController>();
+        var objectives = FindAnyObjectByType<ObjectivesController>();
         if (objectives == null) yield break;
 
         var rect = objectives.GetComponent<RectTransform>();

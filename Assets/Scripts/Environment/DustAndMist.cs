@@ -57,7 +57,7 @@ public class DustAndMist : MonoBehaviour
         DeckGeneration deck = null;
         for (int frame = 0; frame < 300; frame++)
         {
-            deck = FindFirstObjectByType<DeckGeneration>();
+            deck = FindAnyObjectByType<DeckGeneration>();
             if (deck != null && deck.maxX > deck.minX && deck.maxZ > deck.minZ) break;
             deck = null;
             yield return null;
@@ -87,7 +87,7 @@ public class DustAndMist : MonoBehaviour
                 alpha: MistAlpha * 1.3f, gray: 0.7f));
 
             // fog pockets: some areas of the ship are simply worse
-            var rng = new System.Random(deck.GetInstanceID());
+            var rng = new System.Random(deck.GetHashCode());
             for (int i = 0; i < 9; i++)
             {
                 float px = Mathf.Lerp(deck.minX, deck.maxX, (float)rng.NextDouble());
@@ -108,12 +108,20 @@ public class DustAndMist : MonoBehaviour
         BuildDust(mat);
     }
 
+    private float driftDebt;
+
     void Update()
     {
         // The air follows the ship's roll: a slow push across the hull,
-        // reversing with the same period the camera sways with.
+        // reversing with the same period the camera sways with. Particles are
+        // rewritten only on alternate frames (with the accumulated push) —
+        // the drift is far too slow for the eye to notice, and it halves the
+        // cost of touching every particle of ~12 systems.
         float drift = Mathf.Sin(2f * Mathf.PI * Time.time / RollPeriod) * DriftStrength;
-        Vector3 push = new Vector3(drift, 0f, drift * 0.2f) * Time.deltaTime;
+        driftDebt += drift * Time.deltaTime;
+        if (Time.frameCount % 2 != 0) return;
+        Vector3 push = new Vector3(driftDebt, 0f, driftDebt * 0.2f);
+        driftDebt = 0f;
 
         foreach (var ps in drifting)
         {

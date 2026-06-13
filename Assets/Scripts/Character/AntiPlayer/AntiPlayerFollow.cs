@@ -194,10 +194,13 @@ public class AntiPlayerFollow : MonoBehaviour
 
     private void FollowPath()
     {
-        if (Vector3.Distance(transform.position, Player.transform.position) < EncounterDistance)
+        if (Vector3.Distance(transform.position, Player.transform.position) < EncounterDistance
+            && CanEncounterPlayer())
         {
             // Close enough — DetectPlayer owns the encounter. Stand still; the
             // route backlog accumulates and is walked back faster afterwards.
+            // Only with a sightline: parking here without one froze the double
+            // on the wrong side of a wall whenever the path passed the player.
             AntiPlayerAnimator.SetBool(IsRunning, false);
             return;
         }
@@ -309,17 +312,27 @@ public class AntiPlayerFollow : MonoBehaviour
         return new Vector3(x, WalkY, z);
     }
 
+    private DetectPlayer detectPlayer;
+
+    private bool CanEncounterPlayer()
+    {
+        if (detectPlayer == null) detectPlayer = GetComponent<DetectPlayer>();
+        return detectPlayer == null || detectPlayer.CanSeePlayerBody();
+    }
+
     private void Roam()
     {
+        // Through the rigidbody, like FollowPath: writing the transform of an
+        // interpolated rigidbody makes interpolation fight the movement.
         Vector3 currentPosition = transform.position;
         if (currentPosition != CurrentTargetPosition)
         {
             float step = CellSize * Time.deltaTime;
-            transform.position = Vector3.MoveTowards(currentPosition, CurrentTargetPosition, step);
+            body.MovePosition(Vector3.MoveTowards(currentPosition, CurrentTargetPosition, step));
             StepSounds.PlayStepSound();
 
             Quaternion rotation = Quaternion.LookRotation(CurrentTargetPosition - currentPosition);
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotation, 10f * Time.deltaTime);
+            body.MoveRotation(Quaternion.Slerp(transform.rotation, rotation, 10f * Time.deltaTime));
         }
         else PickRoamTarget(currentPosition);
     }

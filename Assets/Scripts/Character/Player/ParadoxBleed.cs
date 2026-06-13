@@ -21,7 +21,7 @@ public class ParadoxBleed : MonoBehaviour
 
     void Start()
     {
-        timer = FindFirstObjectByType<PlayerTimer>();
+        timer = FindAnyObjectByType<PlayerTimer>();
         Shader shader = Shader.Find("Cycles/GlitchShell");
         if (timer == null || shader == null)
         {

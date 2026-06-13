@@ -18,6 +18,9 @@ public class CameraSway : MonoBehaviour
     [HideInInspector] public Vector3 ExtraRotation;
     [HideInInspector] public Vector3 ExtraOffset;
 
+    // Roll/heave multiplier, written only by BigWave (1 = calm sea).
+    [HideInInspector] public float AmplitudeBoost = 1f;
+
     private Transform rig;
     private Vector3 rigBasePosition;
     private CharacterController characterController;
@@ -45,12 +48,13 @@ public class CameraSway : MonoBehaviour
         // The maze (ship) is longest along world Z; rolling around that axis
         // reads as full roll when looking down a lengthwise corridor and as a
         // slight pitch when looking across the ship.
-        float roll = RollAmplitude * Mathf.Sin(2f * Mathf.PI * t / RollPeriod);
+        float roll = RollAmplitude * AmplitudeBoost * Mathf.Sin(2f * Mathf.PI * t / RollPeriod);
         float facingAlong = Mathf.Abs(Vector3.Dot(transform.right, Vector3.right));
         float rollPart = roll * facingAlong;
         float pitchPart = roll * 0.5f * Vector3.Dot(transform.forward, Vector3.right);
 
-        float heave = HeaveAmplitude * Mathf.Sin(2f * Mathf.PI * t / HeavePeriod);
+        float heave = HeaveAmplitude * Mathf.Lerp(1f, AmplitudeBoost, 0.5f)
+            * Mathf.Sin(2f * Mathf.PI * t / HeavePeriod);
 
         // Step bob fades in/out with actual movement so standing still is calm.
         bool moving = characterController != null && characterController.velocity.sqrMagnitude > 0.5f;

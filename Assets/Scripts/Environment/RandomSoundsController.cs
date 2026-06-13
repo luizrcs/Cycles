@@ -14,8 +14,8 @@ public class RandomSoundsController : MonoBehaviour
     private AudioSource audioSource;
     private Transform listener;
 
-    private float lastTime = 0f;
-    private const float Delay = 5f;
+    // Random cadence, not a metronome: the ship groans when it wants to.
+    private float nextAt = 0f;
 
     private void Start()
     {
@@ -32,9 +32,9 @@ public class RandomSoundsController : MonoBehaviour
         if (Active)
         {
             float time = Time.time;
-            if (time - lastTime > Delay)
+            if (time > nextAt)
             {
-                lastTime = time;
+                nextAt = time + Random.Range(4f, 11f);
 
                 if (listener == null && Camera.main != null) listener = Camera.main.transform;
                 if (listener != null)

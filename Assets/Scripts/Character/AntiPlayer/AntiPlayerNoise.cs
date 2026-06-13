@@ -105,7 +105,9 @@ public class AntiPlayerNoise : MonoBehaviour
             steps.pitch = 0.82f;
             var reverb = steps.gameObject.AddComponent<AudioReverbFilter>();
             reverb.reverbPreset = AudioReverbPreset.Hallway;
-            stepsFilter = steps.gameObject.AddComponent<AudioLowPassFilter>();
+            // Audio filters disallow duplicates — reuse one if it exists.
+            stepsFilter = steps.gameObject.GetComponent<AudioLowPassFilter>();
+            if (stepsFilter == null) stepsFilter = steps.gameObject.AddComponent<AudioLowPassFilter>();
             stepsFilter.cutoffFrequency = 22000f;
         }
 

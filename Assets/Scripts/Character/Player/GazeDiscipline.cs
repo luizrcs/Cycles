@@ -7,7 +7,7 @@ using UnityEngine.UI;
 //
 //  - WRONG gaze = camera pitched past ±38° (floor/ceiling), or the LOOK
 //    direction (not the corridor you stand in — peeking down a side corridor
-//    from a corner is valid) hits geometry within 4.5 m. Suspended inside
+//    from a corner is valid) hits geometry within 3.2 m. Suspended inside
 //    rooms and doorways (deck matrix cell != 1), where staring at walls and
 //    furniture is the whole point.
 //  - Walking backwards counts too, but at less than half rate — checking the
@@ -144,7 +144,9 @@ public class GazeDiscipline : MonoBehaviour
         var canvasGO = new GameObject("GlitchFlash");
         var canvas = canvasGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 1; // under the scene canvas' blackout fade
+        // Every scene canvas sorts at 0; negative keeps the flashes over the
+        // 3D view but UNDER all scene UI — the battle blackout must cover them.
+        canvas.sortingOrder = -5;
 
         var imageGO = new GameObject("Flash");
         imageGO.transform.SetParent(canvasGO.transform, false);

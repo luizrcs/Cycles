@@ -31,9 +31,9 @@ public class MistNausea : MonoBehaviour
     void Start()
     {
         mist = GetComponent<DustAndMist>();
-        if (mist == null) mist = FindFirstObjectByType<DustAndMist>();
+        if (mist == null) mist = FindAnyObjectByType<DustAndMist>();
         sway = GetComponent<CameraSway>();
-        if (sway == null) sway = FindFirstObjectByType<CameraSway>();
+        if (sway == null) sway = FindAnyObjectByType<CameraSway>();
         if (sway == null) { enabled = false; return; }
 
         BuildVisionQuad();

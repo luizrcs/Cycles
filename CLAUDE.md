@@ -494,7 +494,7 @@ way you did, 120 s after you.
   `ProceduralAudio.MakeGlitchLoop`.
 - Heartbeat/pulse: `DreadController` (interval lerp, arrhythmia rolls 12%/8%, spring 230/7, FOV
   kick 28–50, volume overrides).
-- Stare: StareLimit 3 s, StareMaxAngle 14°, StareMaxDistance 35 m, decay 2×.
+- Stare: StareLimit 3 s, StareMaxAngle 16°, StareMaxDistance 35 m, decay 2×.
 - Replay pace: AntiPlayerFollow BaseReplaySpeed 5.5, catch-up 0.01/point capped +6.
 - Entrance: EntranceLead 2.4 s, EntranceSpeed 3.2.
 
@@ -679,11 +679,11 @@ scene edits) active in EVERY scene including menus:
   still stand.
 
 ### Session 7 knobs
-- FilmDamage: flutter 0.045, dip 0.10, splice every 18–55 s, scratch birth p=0.004/frame/slot,
+- FilmDamage: flutter 0.045, dip 0.10, splice every 10–35 s, scratch birth p=0.012×intensity/frame/slot,
   hair p=0.0012, dust p=0.06/speck, grade weight 0.65, wear offsets in ApplyWear.
 - Occlusion: cutoff 650→22000, floor volume 35%, smooth 3.5/s.
 - Creaks: 7–22 m radius, every 5 s.
-- Nausea: AmbientFloor 0.12, Build 9 s, Decay 25 s, amplitudes in Update.
+- Nausea: AmbientFloor 0.10, Build 9 s, Decay 25 s, amplitudes in Update.
 - GazeDiscipline ArmDelay 6 s.
 - GlitchShell: _SliceScale 22, snow gate 0.92, fringe colors in frag.
 
@@ -765,6 +765,151 @@ on the real screen — eyeball in person.
   (game); per-element rates all scale with intensity.
 - Knocks 18–42 s / 65 m; echo 0.5×(1-occlusion); buzz 0.16×level, range 7 m.
 - Cascade: 180→225 s, farthest-from-exit first, rooms exempt.
+
+## Session 9 (2026-06-12) — static audit round 2: the problems hiding in the "fixed" systems + backlog ships
+
+### PROCEDURE (standing, USER mandate — applies to every future session)
+**Prioritize static code analysis: READ the scripts, and verify editor/scene state by calling
+MCP tools not yet used (execute_code state dumps, read_console, find_in_file, manage_* queries,
+scene-file greps) — NOT screenshots.** Screenshots give neither the long-term picture nor a
+faithful snapshot of visuals or gameplay: nearly every effect here is time-gated, danger-gated
+and randomized, so a still frame proves almost nothing. Use a screenshot only as a last resort
+for "does this material read right", never to verify logic. **Write conclusions to CLAUDE.md
+as they are found, BEFORE implementing**, so they survive the session.
+
+### Static-analysis findings (all found by reading; each confirmed in code/scene files)
+1. **Replay stall behind walls** (`AntiPlayerFollow.FollowPath`): the "stop ≥3 m short of the
+   player" check is unconditional, but `DetectPlayer.TouchesPlayer` (correctly) requires clear
+   line of sight. Net effect: when the replayed path passes the player on the other side of a
+   wall, the double freezes 3 m away on the wrong side — noise loop blasting, never arriving,
+   until the player happens to walk off. The session-5 "no aggro through walls" fix created this
+   hole. → Stop short only when an encounter is actually possible (LoS); otherwise keep replaying.
+2. **The roaming double walks straight through the player**: `TouchesPlayer` is gated to
+   `State == 1` (follow). In roam (State 2) only the 35° sight cone triggers, so it can phase
+   through you from behind/side with zero reaction. → allow touch encounters while roaming.
+3. **`Roam()` moves the transform directly on an interpolated rigidbody** — the exact bug class
+   session 8 fixed for teleports; interpolation fights the transform every frame (visible
+   jitter/rubber-banding while it roams). → `body.MovePosition/MoveRotation` like FollowPath.
+4. **Bonus interior exit doors** (`DeckGeneration.InstantiateWalls`): the `wall` local is
+   reused across the north/east/south/west branches; once the north branch sets
+   `wall = ExitDoor`, a closed south/west neighbor in the same cell instantiates a SECOND exit
+   door facing into the maze (~10% per top/east border exit cell). It glows and opens at
+   EndGame and leads into an unfloored void cell. (NOTE: the generator intentionally places an
+   exit at EVERY matching border cell — that is original gameplay, keep it.) → per-direction local.
+5. **`DeckGenerator.GenerateDeck()` re-runs on dirty state**: when <3 rooms roll, Matrix/Rooms
+   are NOT cleared before regenerating — stale door cells (4–11) survive, giving re-rolled
+   rooms phantom second door-walls. → clear both arrays at the top of GenerateDeck.
+6. **GlitchFlash renders ABOVE the battle blackout**: every canvas in Game.unity is
+   sortingOrder 0 (verified by scene-file grep + editor dump); the flash overlay sorts at 1,
+   its comment claims "under the blackout". → sortingOrder −5 (still over the 3D view; under
+   all scene UI).
+7. **`FlickeringLight` material churn**: grabs ALL sibling renderers (for sconces that includes
+   the wall itself), instantiates `.material` copies, and re-fetches `.material` every frame
+   for renderers whose emission is permanently black. Breaks batching for nothing. → cache
+   emissive materials once in Start, keep only those with a non-black `_EmissionColor`.
+8. **Verified consistent (suspicions withdrawn after reading)**: PlayerPath + replay clock both
+   use absolute `Time.time` coherently (queue rebuilt per scene — no cross-run drift);
+   `AfterPostBattleSetup` does reset `CurrentTargetPosition` before roam; the maze border ring
+   is ALWAYS corridor (closure + pruning skip it) so `minX/minZ` and Respawn's corner↔matrix
+   pairing are always valid; `survivedEncounter`/heartbeat-floor is per-instance, no cross-run
+   static leak; both custom shaders are in AlwaysIncludedShaders.
+9. **Doc/code knob drift (CLAUDE.md was wrong, code is source of truth)**: stare angle is 16°
+   (doc said 14), nausea AmbientFloor is 0.10 (doc said 0.12), film splice cadence 10–35 s
+   (doc said 18–55), GazeDiscipline header comment said 4.5 m while the constant is 3.2 m.
+10. `RandomSoundsController` creaks on a FIXED 5 s metronome — violates the "compounding
+    randomness" standing principle. → random 4–11 s interval.
+11. Perf notes for the audit item: `DustAndMist.Update` rewrites every particle of ~12 systems
+    per frame (drift); halve cost by displacing on alternate frames with doubled push.
+    `FootprintTrail`/checklist textures are fine (bounded).
+
+### USER-IDEA / BACKLOG AUDIT — promised or approved but NOT in the code (ALL SHIPPED ✅)
+Why these existed: the effect taxonomy (session 8) demands all four categories stay populated;
+these were the gaps — random-tension events (room events, porthole scares, big waves, groan),
+location/state effects (footstep materiality, gramophone, moonlight), dying effects (exit-door
+blackout beacon), and the missing half of the USER's sanity system (darkness feeding dread).
+- ✅ **Dread from darkness** (USER, sessions 2/4): new `DarknessDread` on the camera samples
+      nearby lamps every 0.35 s; deep dark (lit < 0.18) builds dread after a 3 s grace over
+      14 s, capped at 0.45; light heals at 2.5×. Feeds `DreadController.DarknessDread`
+      (active pre-engage too — the body fears the dark always). Synergy: the endgame light
+      cascade now raises the heart automatically. Verified live: injected darkSeconds=10 →
+      dread 0.225 exactly; lamps drained it on their own.
+- ✅ **Footstep materiality** (roadmap #2 since session 3): only 6 generic step clips exist —
+      so it is DSP, not clips. `StepSounds` adds a low-pass (PLAYER ONLY): corridor = carpet
+      runner (cutoff 2400 Hz, ×0.74 volume), rooms/doorways = bare wood (open), decided
+      per-step from the deck matrix. The double keeps its deliberate wrongness instead —
+      LESSON: Unity audio filters disallow duplicates per GameObject; StepSounds adding a
+      second LPF made AntiPlayerNoise's AddComponent return null and aborted its Start
+      (caught live as an NRE — echo/knocks never spawned). AntiPlayerNoise is get-or-add now.
+- ✅ **Big-wave seasickness moments** (`BigWave`, on the Deck): every 70–140 s one roll period
+      (9 s) at ×3 amplitude via `CameraSway.AmplitudeBoost`, synthesized hull groan
+      (`ProceduralAudio.MakeGroanSwell`, positional 10–20 m out), corridor CEILING lamps swing
+      ±6° (sconces are bolted). First wave plays the author's unused `WhatSound` line 2.2 s in,
+      only if no encounter/no other line. Verified live: forced wave ran, WhatSound played.
+- ✅ **Room events** (`RoomEvents`, on the Deck): matrix-based entry detection (corridor →
+      doorway 4–11 → interior). First entry, 40%: healthy room lamp sputters violently and
+      RECOVERS (rooms never go dark) / the door you came through slams 0.8–1.4 s later /
+      4–6 muffled footsteps overhead (LPF 700 Hz, pitch ~0.83, 3.4 m up). Revisit, 35%:
+      the room's painting is swapped (`PaintingChooser.Reroll`). 25 s global cooldown,
+      silent during encounters.
+- ✅ **Porthole scares** (`PortholeScares`, on the Deck): every 50–110 s if an exit door is
+      within 15 m — wave slap (`MakeWaveSlap` boom + spray particle burst across the glass);
+      20% instead a person-sized dark quad glides past outside over 1.6 s with one low thud.
+- ✅ **Exit-door blackout moment** (in `DeckGeneration`): when EndGame flips, every corridor
+      lamp dies for 2.2 s (FlickeringLights suspended so they can't relight, buzzes muted) with
+      a deep 2D thud — only the exit's glow remains — then power returns. Verified live:
+      forced EndGame → blackout → 110/119 restored (the rest mid-sputter, correct). Glass
+      emission stays during the beat = incandescent afterglow, accepted as physical.
+- ✅ **Gramophone room** (`Gramophone`, in one random cabin): synthesized 8-bar A-minor
+      music-box waltz, 84 bpm, shellac hiss + crackle baked in (`MakeWaltz`), horn-limited
+      to 7.5 kHz, live wow & flutter on pitch. The double within 12 m drags the pitch down,
+      muffles to 700 Hz and ducks it — the music fears it first. Verified playing in-scene.
+- ✅ **Moonlight**: per exit door a cold spot shaft (5.5/range 13/36°, no shadows) angled in
+      through the porthole, owned by DeckGeneration; plus `OceanSurface` moves the water to
+      the built-in Water layer (4) and adds a culling-masked "MoonGlint" spot that lights ONLY
+      the ocean (a naked directional would leak through the unshadowed hull — rejected).
+      Verified: 14 shafts for 14 border exit doors, ocean on layer 4.
+- ✅ **Hero-prop material pass** (via MCP editor API, not YAML): Detail_Wood_N → bed frame
+      (also de-metalled: metallic 0.8→0.05, smooth 0.45 — same accidental-metal bug Wall_Bar
+      had), compass body+face, floor-lamp wood parts, oar; Detail_Fabric_N → mattress +
+      blanket. 10 materials, tiling 3–6, scales 0.45–0.8. Skipped: glass, crystal, bare-metal,
+      the untextured gray bed part (unidentifiable — don't guess).
+- ✅ **Performance**: FlickeringLight now caches only genuinely-emissive material instances
+      (sconce walls no longer instanced — batching preserved); DustAndMist displaces particles
+      on alternate frames with accumulated push (cost halved, drift identical). Deprecated-API
+      sweep: FindFirstObjectByType→FindAnyObjectByType, FindObjectsByType sort-mode overload,
+      GetInstanceID→GetHashCode (10 files) — console is now warning-free.
+- Still deferred (needs a URP FullScreenPass feature; discuss): gate weave (whole-frame jitter).
+- Needs USER sign-off (working agreements protect menus/story): the PreGame teaching line
+  ("Não pare. Não encare. Não olhe para trás."), 1-frame silhouette in first gaze flash.
+
+### Session 9 implementation + verification results
+- All 8 static-analysis fixes implemented. Verified live (play mode, state dumps — zero
+  screenshots): roam-touch encounter fires on a double placed BEHIND the player facing away
+  (only the touch path could catch it) ✓; GlitchFlash sorts at −5 ✓; exit doors 14/14 on the
+  border ✓; blackout + restore ✓; darkness dread data path exact ✓; double's audio chain
+  (echo/knocks/phantom/pitch 0.82/single LPF) healthy ✓; gramophone playing ✓; MoonGlint +
+  shafts present ✓; console clean of errors AND warnings across two full play sessions.
+- The replay-stall fix (stop-short only with LoS) is code-review-verified only — exercising it
+  needs a 120 s recorded route ending behind a wall; **user playtest should watch for the
+  double freezing near walls** (it should now walk past and around instead).
+- Incidental live re-confirmation: an AFK editor session gets gaze-ambushed ~10 s in — the
+  rule works; automated tests must disable GazeDiscipline first (documented trap).
+- New runtime components keep the established pattern (added from code, zero scene edits):
+  `DarknessDread` joins the camera stack via DetectPlayer; BigWave/RoomEvents/PortholeScares/
+  Gramophone/moon shafts are owned by DeckGeneration. `CameraSway.AmplitudeBoost` is
+  single-writer (BigWave). `DeckGeneration` exposes `CorridorLamps` + `RoomInstances`.
+
+### Session 9 knobs
+- DarknessDread: SampleEvery 0.35 / DarkThreshold 0.18 / Grace 3 s / Ramp 14 s / Heal 2.5× /
+  Cap 0.45.
+- Steps: CarpetCutoff 2400 Hz / CarpetVolume 0.74 (in StepSounds).
+- BigWave: interval 70–140 s (first 45–90) / Boost ×3 / SwingDegrees 6.
+- RoomEvents: FirstEntryChance 0.4 / RevisitSwapChance 0.35 / EventCooldown 25 s / event split
+  0.4 lamp / 0.3 slam / 0.3 overhead.
+- PortholeScares: interval 50–110 s / NearDistance 15 / SilhouetteChance 0.2.
+- Gramophone: Volume 0.34 / WarpRange 12 / horn cutoff 7500 Hz.
+- Blackout: 2.2 s; moon shafts intensity 5.5 / range 13 / 36°; MoonGlint 3.2 / 95° / Water-only.
+- Creaks now random 4–11 s (was a fixed 5 s metronome).
 
 ## Working agreements
 

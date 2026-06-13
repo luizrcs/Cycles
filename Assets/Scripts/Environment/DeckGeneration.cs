@@ -46,6 +46,11 @@ public class DeckGeneration : MonoBehaviour
     // player toward the one door that matters. Rooms stay lit (items must
     // stay findable to the end).
     private readonly List<Light> corridorLamps = new();
+    public IReadOnlyList<Light> CorridorLamps => corridorLamps;
+
+    // Every instantiated cabin root, for the room/gramophone systems.
+    public readonly List<GameObject> RoomInstances = new();
+
     private Vector3 exitDoorPosition;
     private PlayerTimer playerTimer;
     private bool cascadeStarted;
@@ -83,16 +88,116 @@ public class DeckGeneration : MonoBehaviour
 
         ApplyLightVariation();
 
-        playerTimer = FindFirstObjectByType<PlayerTimer>();
+        playerTimer = FindAnyObjectByType<PlayerTimer>();
         var exitTrigger = GetComponentInChildren<ExitDoorTrigger>();
         if (exitTrigger != null) exitDoorPosition = exitTrigger.transform.position;
+
+        // Session 9: the ship grew events — big waves, living cabins, the sea
+        // at the portholes, one gramophone, moonlight at the exits. All
+        // runtime-added; no scene edits.
+        gameObject.AddComponent<BigWave>();
+        gameObject.AddComponent<RoomEvents>();
+        gameObject.AddComponent<PortholeScares>();
+        SetupGramophone();
+        SetupMoonlight();
     }
 
     void Update()
     {
+        // The exit-door moment: the instant the lifeboat is repairable, the
+        // ship's power dies for a breath — only the exit's glow remains, a
+        // beacon — then returns.
+        if (!exitBlackoutStarted && ExitDoorController.EndGame)
+        {
+            exitBlackoutStarted = true;
+            StartCoroutine(ExitBlackout());
+        }
+
         if (cascadeStarted || playerTimer == null || playerTimer.Elapsed < CascadeStart) return;
         cascadeStarted = true;
         StartCoroutine(LightFailureCascade());
+    }
+
+    private bool exitBlackoutStarted;
+
+    private IEnumerator ExitBlackout()
+    {
+        var restore = new List<(Light lamp, FlickeringLight flicker)>();
+        foreach (Light lamp in corridorLamps)
+        {
+            if (lamp == null || !lamp.enabled) continue;
+            var flicker = lamp.GetComponent<FlickeringLight>();
+            if (flicker != null) flicker.enabled = false; // it would re-light its bulb
+            lamp.enabled = false;
+            var buzz = lamp.GetComponent<AudioSource>();
+            if (buzz != null) buzz.mute = true;
+            restore.Add((lamp, flicker));
+        }
+
+        // One deep structural thud, inside the head — the ship acknowledging.
+        var go = new GameObject("PowerThud");
+        var thud = go.AddComponent<AudioSource>();
+        thud.spatialBlend = 0f;
+        thud.pitch = 0.45f;
+        thud.PlayOneShot(ProceduralAudio.MakeMetalKnock(), 0.9f);
+        Destroy(go, 3f);
+
+        yield return new WaitForSeconds(2.2f);
+
+        foreach (var (lamp, flicker) in restore)
+        {
+            if (lamp == null) continue;
+            lamp.enabled = true;
+            var buzz = lamp.GetComponent<AudioSource>();
+            if (buzz != null) buzz.mute = false;
+            if (flicker != null) flicker.enabled = true;
+        }
+    }
+
+    // One random cabin hides the gramophone.
+    private void SetupGramophone()
+    {
+        if (RoomInstances.Count == 0) return;
+        GameObject room = RoomInstances[deckGenerator.Random.Next(RoomInstances.Count)];
+
+        var go = new GameObject("Gramophone");
+        go.transform.SetParent(room.transform, false);
+        go.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+
+        var gramophone = go.AddComponent<Gramophone>();
+        var follow = FindAnyObjectByType<AntiPlayerFollow>();
+        if (follow != null) gramophone.Init(follow);
+    }
+
+    // Moonlight: thin cold shafts angled in through the exit doors' portholes.
+    // Local spots, no shadows — a bare directional would leak through the
+    // unshadowed hull and flat-light the interior.
+    private void SetupMoonlight()
+    {
+        Vector3 center = new((minX + maxX) / 2f, 0f, (minZ + maxZ) / 2f);
+        foreach (ExitDoorTrigger trigger in GetComponentsInChildren<ExitDoorTrigger>())
+        {
+            Vector3 doorPosition = trigger.transform.position;
+            Vector3 d = doorPosition - center;
+            Vector3 outward = Mathf.Abs(d.x) > Mathf.Abs(d.z)
+                ? new Vector3(Mathf.Sign(d.x), 0f, 0f)
+                : new Vector3(0f, 0f, Mathf.Sign(d.z));
+
+            var go = new GameObject("MoonShaft");
+            go.transform.SetParent(transform, false);
+            go.transform.position = doorPosition + outward * 2.1f + Vector3.up * 2.8f;
+            go.transform.rotation = Quaternion.LookRotation(
+                doorPosition - outward * 1.6f + Vector3.up * 0.3f - go.transform.position);
+
+            var moon = go.AddComponent<Light>();
+            moon.type = LightType.Spot;
+            moon.color = new Color(0.6f, 0.71f, 0.95f);
+            moon.intensity = 5.5f;
+            moon.range = 13f;
+            moon.spotAngle = 36f;
+            moon.innerSpotAngle = 14f;
+            moon.shadows = LightShadows.None;
+        }
     }
 
     private IEnumerator LightFailureCascade()
@@ -334,14 +439,18 @@ public class DeckGeneration : MonoBehaviour
 
                 if (north == 0)
                 {
+                    // Choose per direction: reusing `wall` leaked ExitDoor into the
+                    // other branches of the same cell, spawning bonus exit doors
+                    // that opened into unfloored void cells.
+                    GameObject northWall = wall;
                     if (
                         y == DeckGenerator.Height - 2
                         && (x - 1) % deckGenerator.RoomDistance == 0
                         && x != 1
                         && x != DeckGenerator.Width - 2
-                    ) wall = ExitDoor;
+                    ) northWall = ExitDoor;
 
-                    Instantiate(wall, new(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
+                    Instantiate(northWall, new(deckX, 0, deckZ + WallWidth / 2f), Quaternion.Euler(0, 0, 0), transform);
                 }
                 else if (north >= 4 && north < 12)
                 {
@@ -352,14 +461,15 @@ public class DeckGeneration : MonoBehaviour
 
                 if (east == 0)
                 {
+                    GameObject eastWall = wall;
                     if (
                         x == DeckGenerator.Width - 2
                         && (y - 1) % deckGenerator.RoomDistance == 0
                         && y != 1
                         && y != DeckGenerator.Height - 2
-                    ) wall = ExitDoor;
+                    ) eastWall = ExitDoor;
 
-                    Instantiate(wall, new(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
+                    Instantiate(eastWall, new(deckX + WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 90, 0), transform);
                 }
                 else if (east >= 4 && east < 12)
                 {
@@ -370,14 +480,15 @@ public class DeckGeneration : MonoBehaviour
 
                 if (south == 0)
                 {
+                    GameObject southWall = wall;
                     if (
                         y == 1
                         && (x - 1) % deckGenerator.RoomDistance == 0
                         && x != 1
                         && x != DeckGenerator.Width - 2
-                    ) wall = ExitDoor;
+                    ) southWall = ExitDoor;
 
-                    Instantiate(wall, new(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
+                    Instantiate(southWall, new(deckX, 0, deckZ - WallWidth / 2f), Quaternion.Euler(0, 180, 0), transform);
                 }
                 else if (south >= 4 && south < 12)
                 {
@@ -388,14 +499,15 @@ public class DeckGeneration : MonoBehaviour
 
                 if (west == 0)
                 {
+                    GameObject westWall = wall;
                     if (
                         x == 1
                         && (y - 1) % deckGenerator.RoomDistance == 0
                         && y != 1
                         && y != DeckGenerator.Height - 2
-                    ) wall = ExitDoor;
+                    ) westWall = ExitDoor;
 
-                    GameObject theWall = Instantiate(wall, new(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
+                    GameObject theWall = Instantiate(westWall, new(deckX - WallWidth / 2f, 0, deckZ), Quaternion.Euler(0, 270, 0), transform);
 
                     if (deckX == 3.75f && deckZ == 71.25f)
                     {
@@ -435,6 +547,7 @@ public class DeckGeneration : MonoBehaviour
 
             GameObject chosenRoom = corner == 0 ? Room_A : Room_B;
             GameObject room = Instantiate(chosenRoom, new(deckX + 3.75f, 0, deckZ + 3.75f), Quaternion.Euler(0, 90 * rotation, 0), transform);
+            RoomInstances.Add(room);
 
             foreach (Transform transform in room.GetComponentsInChildren<Transform>())
             {

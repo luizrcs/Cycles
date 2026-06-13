@@ -27,6 +27,11 @@ public class DreadController : MonoBehaviour
     // Extra dread injected by other systems (GazeDiscipline). 0..1.
     public float ExternalDread;
 
+    // The dark side of the sanity system: set by DarknessDread (already
+    // capped there) — standing in deep darkness raises the heart, working
+    // lamps drain it. 0..1.
+    public float DarknessDread;
+
     private DetectPlayer detect;
     private AntiPlayerFollow follow;
     private AntiPlayerGlitch glitch;
@@ -127,16 +132,16 @@ public class DreadController : MonoBehaviour
         if (detect.State == 2) return 0f; // battle: the stab sounds own the mix
         if (detect.State == 1) return 1f;
 
-        // Before the double boards only the gaze rule speaks (it is active
-        // from the start — the recording is already running).
-        if (!follow.Engaged) return Mathf.Clamp01(ExternalDread);
+        // Before the double boards only the gaze rule and the dark speak (the
+        // recording is already running, and the body fears darkness always).
+        if (!follow.Engaged) return Mathf.Max(Mathf.Clamp01(ExternalDread), DarknessDread);
 
         float distance = Vector3.Distance(doubleTransform.position, player.position);
         float proximity = Mathf.Clamp01(1f - (distance - 3f) / 20f);
         float floor = survivedEncounter ? 0.12f : 0f;
 
         return Mathf.Max(proximity, stare / StareLimit * 0.85f, Mathf.Clamp01(ExternalDread),
-            afterShock * 0.75f, floor);
+            afterShock * 0.75f, floor, DarknessDread);
     }
 
     // Glances are free; holding it in the middle of the view is not. Brief

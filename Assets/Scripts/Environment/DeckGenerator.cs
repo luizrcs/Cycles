@@ -67,6 +67,12 @@ public class DeckGenerator
 
     public void GenerateDeck()
     {
+        // Regeneration (when <3 rooms rolled) must start clean: stale door
+        // cells (4–11) from a previous attempt gave re-rolled rooms phantom
+        // second door-walls.
+        Array.Clear(Matrix, 0, Matrix.Length);
+        Array.Clear(Rooms, 0, Rooms.Length);
+
         GenerateCorridors();
         GenerateRooms();
     }

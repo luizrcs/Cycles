@@ -40,6 +40,8 @@ public class DetectPlayer : MonoBehaviour
         dread.Init(this, AntiPlayerFollow, Player.transform);
         var gaze = FirstPersonController.gameObject.AddComponent<GazeDiscipline>();
         gaze.Init(this, AntiPlayerFollow, dread);
+        var darkness = FirstPersonController.gameObject.AddComponent<DarknessDread>();
+        darkness.Init(dread);
         FirstPersonController.gameObject.AddComponent<MistNausea>();
         Player.AddComponent<ParadoxBleed>();
     }
@@ -118,11 +120,20 @@ public class DetectPlayer : MonoBehaviour
     // it catches up from behind; proximity starts the encounter — but only
     // with an actual sightline. The old distance-only check aggroed through
     // walls whenever the replayed path passed the player on the other side.
+    // Roaming counts too: it cannot brush past you off-cone and not notice.
     private bool TouchesPlayer()
     {
-        return AntiPlayerFollow.State == 1
+        return (AntiPlayerFollow.State == 1 || AntiPlayerFollow.State == 2)
             && Vector3.Distance(transform.position, Player.transform.position) < TouchDistance
             && CanSeeBody();
+    }
+
+    // The follow replay asks this before parking itself near the player: with
+    // no sightline there is no encounter to wait for, so it must keep walking
+    // the path instead of freezing on the wrong side of a wall.
+    public bool CanSeePlayerBody()
+    {
+        return CanSeeBody();
     }
 
     // Bodies are 3D: a player strafe-peeking around a corner with half their

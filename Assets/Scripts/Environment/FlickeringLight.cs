@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // A failing incandescent lamp on a decaying ship. Two real-world failure modes:
@@ -19,7 +20,7 @@ public class FlickeringLight : MonoBehaviour
     private Light lamp;
     private float baseIntensity;
 
-    private Renderer[] emissiveRenderers;
+    private Material[] emissiveMaterials;
     private Color[] baseEmissions;
 
     private float level = 1f;
@@ -63,15 +64,25 @@ public class FlickeringLight : MonoBehaviour
             buzz.Play();
         }
 
-        emissiveRenderers = transform.parent != null
-            ? transform.parent.GetComponentsInChildren<Renderer>()
-            : new Renderer[0];
-        baseEmissions = new Color[emissiveRenderers.Length];
-        for (int i = 0; i < emissiveRenderers.Length; i++)
+        // Cache only materials that actually emit: instantiating `.material`
+        // copies for every sibling renderer (the sconce's WALL included) broke
+        // batching for renderers whose emission is permanently black.
+        var materials = new List<Material>();
+        var colors = new List<Color>();
+        if (transform.parent != null)
         {
-            Material m = emissiveRenderers[i].material;
-            baseEmissions[i] = m.HasProperty(EmissionColor) ? m.GetColor(EmissionColor) : Color.black;
+            foreach (Renderer renderer in transform.parent.GetComponentsInChildren<Renderer>())
+            {
+                Material shared = renderer.sharedMaterial;
+                if (shared == null || !shared.HasProperty(EmissionColor)) continue;
+                Color emission = shared.GetColor(EmissionColor);
+                if (emission.maxColorComponent <= 0.01f) continue;
+                materials.Add(renderer.material); // instance only the glowing glass
+                colors.Add(emission);
+            }
         }
+        emissiveMaterials = materials.ToArray();
+        baseEmissions = colors.ToArray();
     }
 
     void Update()
@@ -133,10 +144,7 @@ public class FlickeringLight : MonoBehaviour
 
         if (buzz != null) buzz.volume = 0.16f * l + (l > 0.02f ? 0.04f : 0f);
 
-        for (int i = 0; i < emissiveRenderers.Length; i++)
-        {
-            Material m = emissiveRenderers[i].material;
-            if (m.HasProperty(EmissionColor)) m.SetColor(EmissionColor, baseEmissions[i] * l);
-        }
+        for (int i = 0; i < emissiveMaterials.Length; i++)
+            emissiveMaterials[i].SetColor(EmissionColor, baseEmissions[i] * l);
     }
 }
